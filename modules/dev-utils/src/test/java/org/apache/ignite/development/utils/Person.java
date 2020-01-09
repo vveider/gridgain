@@ -24,7 +24,6 @@ import org.apache.ignite.cache.query.annotations.QuerySqlField;
  */
 public class Person {
     /** Id. */
-//    @QuerySqlField(index = true)
     private final Integer id;
 
     /** Name. */
@@ -59,6 +58,7 @@ public class Person {
 
         Person other = (Person)obj;
 
-        return other.id.equals(id) && other.name.equals(name);
+        return Objects.equals(id, other.id) &&
+            Objects.equals(name, other.name);
     }
 }

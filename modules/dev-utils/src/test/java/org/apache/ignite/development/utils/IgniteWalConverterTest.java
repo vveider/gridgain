@@ -83,62 +83,59 @@ public class IgniteWalConverterTest extends GridCommonAbstractTest {
 
     public static final String PERSON_NAME_PREFIX = "Name ";
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
+        super.beforeTest();
+
         cleanPersistenceDir();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override protected void afterTest() throws Exception {
         stopAllGrids(true);
 
         cleanPersistenceDir();
+
+        super.afterTest();
     }
 
-    /**
-     * {@inheritDoc}
-     */
+    /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String igniteInstanceName) throws Exception {
         final IgniteConfiguration igniteConfiguration = super.getConfiguration(igniteInstanceName);
 
         igniteConfiguration.setDataStorageConfiguration(getDataStorageConfiguration());
 
-        final CacheConfiguration cache3Configuration = new CacheConfiguration<>();
-        cache3Configuration.setName(DEFAULT_CACHE_NAME);
-        cache3Configuration.setCacheMode(CacheMode.PARTITIONED);
-        cache3Configuration.setBackups(0);
-        cache3Configuration.setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL);
-        cache3Configuration.setIndexedTypes(PersonKey.class, Person.class);
+        final CacheConfiguration cacheConfiguration = new CacheConfiguration<>()
+            .setName(DEFAULT_CACHE_NAME)
+            .setCacheMode(CacheMode.PARTITIONED)
+            .setBackups(0)
+            .setAtomicityMode(CacheAtomicityMode.TRANSACTIONAL)
+            .setIndexedTypes(PersonKey.class, Person.class);
 
-        igniteConfiguration.setCacheConfiguration(cache3Configuration);
+        igniteConfiguration.setCacheConfiguration(cacheConfiguration);
+
         return igniteConfiguration;
     }
 
-    /**
-     *
-     */
+    /** @return DataStorageConfiguration. */
     private DataStorageConfiguration getDataStorageConfiguration() {
-        final DataStorageConfiguration dataStorageConfiguration = new DataStorageConfiguration();
-        dataStorageConfiguration.setWalSegmentSize(4 * 1024 * 1024);
-        dataStorageConfiguration.setWalMode(WALMode.LOG_ONLY);
-        dataStorageConfiguration.setCheckpointFrequency(1000);
-        dataStorageConfiguration.setWalCompactionEnabled(true);
-        dataStorageConfiguration.setWalArchivePath("wal_archive");
-        dataStorageConfiguration.setDefaultDataRegionConfiguration(getDataRegionConfiguration());
+        final DataStorageConfiguration dataStorageConfiguration = new DataStorageConfiguration()
+            .setWalSegmentSize(4 * 1024 * 1024)
+            .setWalMode(WALMode.LOG_ONLY)
+            .setCheckpointFrequency(1000)
+            .setWalCompactionEnabled(true)
+            .setWalArchivePath("wal_archive")
+            .setDefaultDataRegionConfiguration(getDataRegionConfiguration());
+
         return dataStorageConfiguration;
     }
 
-    /**
-     *
-     */
+    /** @return DataRegionConfiguration. */
     private DataRegionConfiguration getDataRegionConfiguration() {
-        final DataRegionConfiguration dataRegionConfiguration = new DataRegionConfiguration();
-        dataRegionConfiguration.setPersistenceEnabled(true);
-        dataRegionConfiguration.setMaxSize(100L * 1024 * 1024);
+        final DataRegionConfiguration dataRegionConfiguration = new DataRegionConfiguration()
+            .setPersistenceEnabled(true)
+            .setMaxSize(100L * 1024 * 1024);
+
         return dataRegionConfiguration;
     }
 
@@ -169,7 +166,8 @@ public class IgniteWalConverterTest extends GridCommonAbstractTest {
             U.resolveWorkDirectory(U.defaultWorkDirectory(), "wal_archive", false),
             new File(U.resolveWorkDirectory(U.defaultWorkDirectory(), "binary_meta", false), nodeFolder),
             U.resolveWorkDirectory(U.defaultWorkDirectory(), "marshaller", false),
-            false
+            false,
+            true
         );
 
         final String result = outByte.toString();
@@ -224,7 +222,8 @@ public class IgniteWalConverterTest extends GridCommonAbstractTest {
             U.resolveWorkDirectory(U.defaultWorkDirectory(), "wal_archive", false),
             null,
             null,
-            false
+            false,
+            true
         );
 
         final String result = outByte.toString();
@@ -254,7 +253,7 @@ public class IgniteWalConverterTest extends GridCommonAbstractTest {
      *     <li>Create cache with <a href="https://apacheignite.readme.io/docs/indexes#section-registering-indexed-types">Registering Indexed Types</a></li>
      *     <li>Put several entity</li>
      *     <li>Stop node</li>
-     *     <li>Change byte in WAL</li>
+     *     <li>Change byte in DataRecord value</li>
      *     <li>Read wal</li>
      *     <li>Check one error when reading WAL</li>
      * </ul>
@@ -312,7 +311,8 @@ public class IgniteWalConverterTest extends GridCommonAbstractTest {
             U.resolveWorkDirectory(U.defaultWorkDirectory(), "wal_archive", false),
             new File(U.resolveWorkDirectory(U.defaultWorkDirectory(), "binary_meta", false), nodeFolder),
             U.resolveWorkDirectory(U.defaultWorkDirectory(), "marshaller", false),
-            false
+            false,
+            true
         );
 
         final String result = outByte.toString();
@@ -343,6 +343,92 @@ public class IgniteWalConverterTest extends GridCommonAbstractTest {
         }
         assertEquals(1, countErrorRead);
     }
+
+    /**
+     * Checking utility IgniteWalConverter on unreadable WAL
+     * <ul>
+     *     <li>Start node</li>
+     *     <li>Create cache with <a href="https://apacheignite.readme.io/docs/indexes#section-registering-indexed-types">Registering Indexed Types</a></li>
+     *     <li>Put several entity</li>
+     *     <li>Stop node</li>
+     *     <li>Change byte RecordType in second DataRecord</li>
+     *     <li>Read wal</li>
+     *     <li>Check contains one DataRecord in output before error when reading WAL</li>
+     * </ul>
+     *
+     * @throws Exception If failed.
+     */
+    @Test
+    public void testIgniteWalConverterWithUnreadableWal() throws Exception {
+        final List<Person> list = new LinkedList<>();
+        final String nodeFolder = createWal(list);
+
+        final File walDir = U.resolveWorkDirectory(U.defaultWorkDirectory(), "db" + File.separator + "wal", false);
+        final File wal = new File(walDir, nodeFolder + File.separator + "0000000000000000.wal");
+        try (RandomAccessFile raf = new RandomAccessFile(wal, "rw")) {
+            raf.seek(RecordV1Serializer.HEADER_RECORD_SIZE); // HeaderRecord
+            int find = 0;
+            while (find<2) {
+                int recordTypeIndex = raf.read();
+                if (recordTypeIndex > 0) {
+                    recordTypeIndex--;
+                    if (recordTypeIndex == WALRecord.RecordType.DATA_RECORD.index()) {
+                        find++;
+                        if (find==2) {
+                            raf.seek(raf.getFilePointer() - 1);
+                            raf.write(Byte.MAX_VALUE);
+                        }
+                    }
+                    final long idx = raf.readLong();
+                    final int fileOff = Integer.reverseBytes(raf.readInt());
+                    final int len = Integer.reverseBytes(raf.readInt());
+                    raf.seek(fileOff + len);
+                }
+            }
+        }
+
+        final ByteArrayOutputStream outByte = new ByteArrayOutputStream();
+        final PrintStream out = new PrintStream(outByte);
+        IgniteWalConverter.convert(
+            out,
+            DataStorageConfiguration.DFLT_PAGE_SIZE,
+            walDir,
+            U.resolveWorkDirectory(U.defaultWorkDirectory(), "wal_archive", false),
+            new File(U.resolveWorkDirectory(U.defaultWorkDirectory(), "binary_meta", false), nodeFolder),
+            U.resolveWorkDirectory(U.defaultWorkDirectory(), "marshaller", false),
+            false,
+            true
+        );
+
+        final String result = outByte.toString();
+        int index = 0;
+        int countErrorRead = 0;
+        for (Person person : list) {
+            boolean find = false;
+            index = result.indexOf("DataRecord", index);
+            if (index > 0) {
+                index = result.indexOf("PersonKey", index + 10);
+                if (index > 0) {
+                    index = result.indexOf("id=" + person.getId(), index + 9);
+                    if (index > 0) {
+                        index = result.indexOf(person.getClass().getSimpleName(), index + 4);
+                        if (index > 0) {
+                            index = result.indexOf("id=" + person.getId(), index + person.getClass().getSimpleName().length());
+                            if (index > 0) {
+                                index = result.indexOf("name=" + person.getName(), index + 4);
+                                find = index > 0;
+                            }
+                        }
+                    }
+                }
+            }
+            if (!find) {
+                countErrorRead++;
+            }
+        }
+        assertEquals(9, countErrorRead);
+    }
+
 
     /**
      * Common part

@@ -62,25 +62,35 @@ public class IgniteWalConverter {
         if (F.isEmpty(walPath) && F.isEmpty(walArchivePath))
             throw new IllegalArgumentException("The paths to the WAL files are not specified.");
 
-        File walDir = null;
+        File walDir = checkFile(walPath, "wal");
 
-        if (!F.isEmpty(walPath)) {
-            walDir = new File(walPath);
+        File walArchiveDir = checkFile(walArchivePath, "archive wal");
 
-            if (!walDir.exists())
-                throw new IllegalArgumentException("Incorrect path to dir with wal files: " + walPath);
+        convert(System.out, pageSize,
+            walDir, walArchiveDir,
+            null, null,
+            true, true);
+    }
+
+    /**
+     * Create File by path if path not empty and check exists.
+     *
+     * @param path Path.
+     * @param description Description path for error message.
+     * @return File.
+     */
+    private static File checkFile(String path, String description) {
+        File file = null;
+
+        if (!F.isEmpty(path)) {
+            file = new File(path);
+
+            if (!file.exists())
+                throw new IllegalArgumentException("Incorrect path to dir with " + description + " files: " +
+                    path + "(" + file.getAbsolutePath() + ")");
         }
 
-        File walArchiveDir = null;
-
-        if (!F.isEmpty(walArchivePath)) {
-            walArchiveDir = new File(walArchivePath);
-
-            if (!walArchiveDir.exists())
-                throw new IllegalArgumentException("Incorrect path to dir with archive wal files: " + walPath);
-        }
-
-        convert(System.out, pageSize, walDir, walArchiveDir, null, null, true);
+        return file;
     }
 
     /**
@@ -102,15 +112,15 @@ public class IgniteWalConverter {
         final File walArchiveDir,
         final File binaryMetadataFileStoreDir,
         final File marshallerMappingFileStoreDir,
-        final boolean keepBinary
-
+        final boolean keepBinary,
+        final boolean skipCrc
     ) throws IgniteCheckedException {
         PageIO.registerH2(H2InnerIO.VERSIONS, H2LeafIO.VERSIONS, H2MvccInnerIO.VERSIONS, H2MvccLeafIO.VERSIONS);
         H2ExtrasInnerIO.register();
         H2ExtrasLeafIO.register();
 
-        System.setProperty(IgniteSystemProperties.IGNITE_PDS_SKIP_CRC, "true");
-        RecordV1Serializer.skipCrc = true;
+        System.setProperty(IgniteSystemProperties.IGNITE_PDS_SKIP_CRC, Boolean.toString(skipCrc));
+        RecordV1Serializer.skipCrc = skipCrc;
         System.setProperty(IgniteSystemProperties.IGNITE_TO_STRING_MAX_LENGTH, String.valueOf(Integer.MAX_VALUE));
 
         boolean printStat = IgniteSystemProperties.getBoolean("PRINT_STAT", true); //TODO read them from argumetns
@@ -140,15 +150,20 @@ public class IgniteWalConverter {
                     currentWalPath = currentRecordWalPath;
                 }
 
-                IgniteBiTuple<WALPointer, WALRecord> next = stIt.nextX();
+                try {
+                    IgniteBiTuple<WALPointer, WALRecord> next = stIt.nextX();
 
-                final WALPointer pointer = next.get1();
-                final WALRecord record = next.get2();
+                    final WALPointer pointer = next.get1();
+                    final WALRecord record = next.get2();
 
-                if (stat != null)
-                    stat.registerRecord(record, pointer, true);
+                    if (stat != null)
+                        stat.registerRecord(record, pointer, true);
 
-                out.println(record);
+                    out.println(record);
+                }
+                catch (Exception e) {
+                    e.printStackTrace(out);
+                }
             }
         }
 
@@ -167,7 +182,7 @@ public class IgniteWalConverter {
         try {
             final Integer curIdx = (Integer)getFieldValue(it, "curIdx");
             final List<FileDescriptor> walFileDescriptors = (List)getFieldValue(it, "walFileDescriptors");
-            if (curIdx!=null && walFileDescriptors!=null && !walFileDescriptors.isEmpty()) {
+            if (curIdx != null && walFileDescriptors != null && !walFileDescriptors.isEmpty()) {
                 result = walFileDescriptors.get(curIdx).getAbsolutePath();
             }
         }
@@ -198,17 +213,17 @@ public class IgniteWalConverter {
     }
 
     /**
-     * Get a field Value in object by filed name
+     * Get a field Value in object by field name
      *
-     * @param o         Object.
+     * @param o Object.
      * @param fieldName Field name.
-     * @return Filed value.
-     * @throws IllegalAccessException
+     * @return Field value.
+     * @throws IllegalAccessException If failed.
      */
     public static Object getFieldValue(Object o, String fieldName) throws IllegalAccessException {
         Object result = null;
         Field field = getField(o.getClass(), fieldName);
-        if (field!=null) {
+        if (field != null) {
             field.setAccessible(true);
             result = field.get(o);
         }

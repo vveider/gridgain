@@ -20,6 +20,8 @@ import java.util.Base64;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.binary.BinaryObject;
 import org.apache.ignite.internal.processors.cache.CacheObjectValueContext;
+import org.apache.ignite.internal.util.GridStringBuilder;
+import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
@@ -69,7 +71,7 @@ public interface UnwrappedDataEntry {
             keyStr = (key != null) ? toStringRecursive(key.getClass(), key) : null;
         }
 
-        if (keyStr == null || keyStr.isEmpty()) {
+        if (F.isEmpty(keyStr)) {
             try {
                 keyStr = Base64.getEncoder().encodeToString(entry.key().valueBytes(cacheObjValCtx));
             }
@@ -93,7 +95,7 @@ public interface UnwrappedDataEntry {
             valueStr = (value != null) ? toStringRecursive(value.getClass(), value) : null;
         }
 
-        if (valueStr == null || valueStr.isEmpty()) {
+        if (F.isEmpty(valueStr)) {
             try {
                 valueStr = Base64.getEncoder().encodeToString(entry.value().valueBytes(cacheObjValCtx));
             }
@@ -103,10 +105,9 @@ public interface UnwrappedDataEntry {
             }
         }
 
-        return entry.getClass().getSimpleName() + "[k = " + keyStr + ", v = ["
-            + valueStr
-            + "], super = ["
-            + superToString + "]]";
+        return new GridStringBuilder(entry.getClass().getSimpleName())
+            .a("[k = ").a(keyStr).a(", v = [").a(valueStr).a("], super = [").a(superToString).a("]]")
+            .toString();
     }
 
     /**
