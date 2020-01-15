@@ -29,6 +29,7 @@ import org.apache.ignite.events.DiscoveryEvent;
 import org.apache.ignite.failure.FailureContext;
 import org.apache.ignite.internal.GridKernalContext;
 import org.apache.ignite.internal.IgniteFutureTimeoutCheckedException;
+import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.IgniteInterruptedCheckedException;
 import org.apache.ignite.internal.cluster.ClusterTopologyServerNotFoundException;
 import org.apache.ignite.internal.events.DiscoveryCustomEvent;
@@ -132,7 +133,7 @@ public class ServiceDeploymentManager {
      *
      * @param stopErr Cause error of deployment manager stop.
      */
-    void stopProcessing(IgniteCheckedException stopErr) {
+    IgniteInternalFuture<?> stopProcessing(IgniteCheckedException stopErr) {
         busyLock.block();
 
         try {
@@ -142,15 +143,20 @@ public class ServiceDeploymentManager {
 
             U.cancel(depWorker);
 
-            U.join(depWorker, log);
+            IgniteInternalFuture<?> fut = ctx.closure().runLocalSafe(() -> {
+                U.join(depWorker, log);
 
-            depWorker.tasksQueue.clear();
+                depWorker.tasksQueue.clear();
+            });
+
 
             pendingEvts.clear();
 
             tasks.values().forEach(t -> t.completeError(stopErr));
 
             tasks.clear();
+
+            return fut;
         }
         finally {
             busyLock.unblock();
