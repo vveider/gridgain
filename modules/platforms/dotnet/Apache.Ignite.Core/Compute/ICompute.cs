@@ -567,6 +567,38 @@ namespace Apache.Ignite.Core.Compute
         /// <returns>Task.</returns>
         Task AffinityRunAsync(string cacheName, object affinityKey, IComputeAction action, 
             CancellationToken cancellationToken);
+        
+        /// <summary>
+        /// Executes given job on primary node for the given partition.
+        /// (a.k.a. affinity co-location).
+        /// </summary>
+        /// <param name="cacheNames">Names of the caches to reserve the partition in.
+        /// The first cache is used for affinity co-location.</param>
+        /// <param name="partition">Partition number.</param>
+        /// <param name="action">Job to execute.</param>
+        void AffinityRun(IEnumerable<string> cacheNames, int partition, IComputeAction action);
+
+        /// <summary>
+        /// Executes given job on primary node for the given partition.
+        /// (a.k.a. affinity co-location).
+        /// </summary>
+        /// <param name="cacheNames">Names of the caches to reserve the partition in.
+        /// The first cache is used for affinity co-location.</param>
+        /// <param name="partition">Partition number.</param>
+        /// <param name="action">Job to execute.</param>
+        Task AffinityRunAsync(IEnumerable<string> cacheNames, int partition, IComputeAction action);
+
+        /// <summary>
+        /// Executes given job on primary node for the given partition.
+        /// (a.k.a. affinity co-location).
+        /// </summary>
+        /// <param name="cacheNames">Names of the caches to reserve the partition in.
+        /// The first cache is used for affinity co-location.</param>
+        /// <param name="partition">Partition number.</param>
+        /// <param name="action">Job to execute.</param>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        Task AffinityRunAsync(IEnumerable<string> cacheNames, int partition, IComputeAction action, 
+            CancellationToken cancellationToken);
 
         /// <summary>
         /// Executes collection of jobs on Ignite nodes within this grid projection.
