@@ -16,6 +16,7 @@
 
 package org.apache.ignite.testframework;
 
+import java.util.stream.Collectors;
 import javax.cache.CacheException;
 import javax.cache.configuration.Factory;
 import javax.management.Attribute;
@@ -1918,6 +1919,9 @@ public final class GridTestUtils {
 
             curTime = U.currentTimeMillis();
         }
+
+        System.out.println("after wait cond: ");
+        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
 
         return false;
     }
