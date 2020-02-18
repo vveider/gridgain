@@ -415,11 +415,11 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
 
         final IgniteWalIteratorFactory factory = new IgniteWalIteratorFactory(new NullLogger());
 
-        IgniteWalIteratorFactory.IteratorParametersBuilder iteratorParametersBuilder =
+        IgniteWalIteratorFactory.IteratorParametersBuilder iterParametersBuilder =
             new IgniteWalIteratorFactory.IteratorParametersBuilder().filesOrDirs(dir)
                 .pageSize(4096);
 
-        try (WALIterator stIt = factory.iterator(iteratorParametersBuilder)) {
+        try (WALIterator stIt = factory.iterator(iterParametersBuilder)) {
         }
 
         boolean binaryMetadataWriterStopped = GridTestUtils.waitForCondition(new GridAbsPredicate() {
@@ -428,7 +428,9 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
 
                 return threadNames.stream().noneMatch(t -> t.startsWith("binary-metadata-writer"));
             }
-        }, 5_000L);
+        }, 10_000L);
+
+        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
 
         assertTrue(binaryMetadataWriterStopped);
     }
