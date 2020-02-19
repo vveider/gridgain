@@ -420,7 +420,10 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
                 .pageSize(4096);
 
         try (WALIterator stIt = factory.iterator(iterParametersBuilder)) {
+            Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
         }
+
+        System.out.println("----1----");
 
         boolean binaryMetadataWriterStopped = GridTestUtils.waitForCondition(new GridAbsPredicate() {
             @Override public boolean apply() {
@@ -430,7 +433,11 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
             }
         }, 10_000L);
 
+        System.out.println("----2----");
+
         Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
+
+        System.out.println("----3----");
 
         assertTrue(binaryMetadataWriterStopped);
     }
