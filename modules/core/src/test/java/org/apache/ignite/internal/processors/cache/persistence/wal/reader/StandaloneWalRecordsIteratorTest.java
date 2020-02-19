@@ -426,7 +426,7 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
             @Override public boolean apply() {
                 Set<String> threadNames = Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet());
 
-                return threadNames.stream().noneMatch(t -> t.startsWith("binary-metadata-writer"));
+                return threadNames.stream().noneMatch(t -> t.startsWith("binary-metadata-writer") && !t.contains("%"));
             }
         }, 10_000L);
 
