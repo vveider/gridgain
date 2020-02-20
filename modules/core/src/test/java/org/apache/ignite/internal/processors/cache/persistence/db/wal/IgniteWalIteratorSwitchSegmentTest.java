@@ -23,6 +23,7 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
@@ -97,6 +98,12 @@ public class IgniteWalIteratorSwitchSegmentTest extends GridCommonAbstractTest {
     @Override protected void afterTest() throws Exception {
         super.afterTest();
 
+        Thread.sleep(5000);
+
+        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
+
+        System.out.println("----0----");
+
         U.delete(Paths.get(U.defaultWorkDirectory()));
     }
 
@@ -157,6 +164,8 @@ public class IgniteWalIteratorSwitchSegmentTest extends GridCommonAbstractTest {
         int recordSize = serializer.size(switchSegmentRecord);
 
         Assert.assertEquals(1, recordSize);
+
+        kctx.cacheObjects().stop(true);
     }
 
     /**

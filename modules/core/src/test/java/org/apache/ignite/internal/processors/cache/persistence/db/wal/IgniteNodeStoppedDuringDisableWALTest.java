@@ -105,6 +105,14 @@ public class IgniteNodeStoppedDuringDisableWALTest extends GridCommonAbstractTes
         cleanPersistenceDir();
     }
 
+    @Override protected void afterTest() throws Exception {
+        super.afterTest();
+
+        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
+
+        System.out.println("----0----");
+    }
+
     /**
      * Test checks that after WAL is globally disabled and node is stopped, persistent store is cleaned properly after node restart.
      *
