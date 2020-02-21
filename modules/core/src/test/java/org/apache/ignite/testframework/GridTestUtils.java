@@ -1920,9 +1920,6 @@ public final class GridTestUtils {
             curTime = U.currentTimeMillis();
         }
 
-        System.out.println("after wait cond: ");
-        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
-
         return false;
     }
 

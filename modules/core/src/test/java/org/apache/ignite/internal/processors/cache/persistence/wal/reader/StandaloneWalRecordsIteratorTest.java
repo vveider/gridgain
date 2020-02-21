@@ -411,16 +411,7 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
      */
     @Test
     public void testBinaryMetadataWriterStopped() throws Exception {
-
-        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
-
-        System.out.println("----0----");
-
         String dir = createWalFiles();
-
-        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
-
-        System.out.println("----1----");
 
         final IgniteWalIteratorFactory factory = new IgniteWalIteratorFactory(new NullLogger());
 
@@ -429,24 +420,15 @@ public class StandaloneWalRecordsIteratorTest extends GridCommonAbstractTest {
                 .pageSize(4096);
 
         try (WALIterator stIt = factory.iterator(iterParametersBuilder)) {
-            Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
         }
-
-        System.out.println("----2----");
 
         boolean binaryMetadataWriterStopped = GridTestUtils.waitForCondition(new GridAbsPredicate() {
             @Override public boolean apply() {
                 Set<String> threadNames = Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet());
 
-                return threadNames.stream().noneMatch(t -> t.startsWith("binary-metadata-writer") && !t.contains("%"));
+                return threadNames.stream().noneMatch(t -> t.startsWith("binary-metadata-writer"));
             }
         }, 10_000L);
-
-        System.out.println("----3----");
-
-        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
-
-        System.out.println("----4----");
 
         assertTrue(binaryMetadataWriterStopped);
     }

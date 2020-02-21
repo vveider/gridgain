@@ -16,7 +16,6 @@
 
 package org.apache.ignite.internal.processors.cache.persistence.db.wal;
 
-import java.util.stream.Collectors;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteException;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -69,17 +68,6 @@ public class IgniteWalIteratorExceptionDuringReadTest extends GridCommonAbstract
         super.beforeTest();
 
         cleanPersistenceDir();
-    }
-
-    @Override protected void afterTest() throws Exception {
-        super.afterTest();
-
-        //stopAllGrids();
-
-        Thread.getAllStackTraces().keySet().stream().map(Thread::getName).collect(Collectors.toSet()).forEach(System.out::println);
-
-        System.out.println("----0----");
-
     }
 
     /**
