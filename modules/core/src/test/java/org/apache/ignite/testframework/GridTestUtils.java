@@ -16,7 +16,6 @@
 
 package org.apache.ignite.testframework;
 
-import java.util.stream.Collectors;
 import javax.cache.CacheException;
 import javax.cache.configuration.Factory;
 import javax.management.Attribute;
