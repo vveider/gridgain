@@ -16,8 +16,15 @@
 
 package org.apache.ignite.internal.processors.cache;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
+import javax.cache.Cache;
+import javax.cache.CacheException;
+import javax.cache.expiry.Duration;
+import javax.cache.expiry.ExpiryPolicy;
+import javax.cache.expiry.TouchedExpiryPolicy;
+import javax.cache.processor.EntryProcessor;
+import javax.cache.processor.EntryProcessorException;
+import javax.cache.processor.EntryProcessorResult;
+import javax.cache.processor.MutableEntry;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,15 +46,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
-import javax.cache.Cache;
-import javax.cache.CacheException;
-import javax.cache.expiry.Duration;
-import javax.cache.expiry.ExpiryPolicy;
-import javax.cache.expiry.TouchedExpiryPolicy;
-import javax.cache.processor.EntryProcessor;
-import javax.cache.processor.EntryProcessorException;
-import javax.cache.processor.EntryProcessorResult;
-import javax.cache.processor.MutableEntry;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
@@ -94,7 +94,6 @@ import org.apache.ignite.resources.ServiceResource;
 import org.apache.ignite.services.Service;
 import org.apache.ignite.services.ServiceContext;
 import org.apache.ignite.spi.communication.tcp.TcpCommunicationSpi;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.MvccFeatureChecker;
 import org.apache.ignite.transactions.Transaction;
@@ -210,8 +209,6 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         IgniteConfiguration cfg = super.getConfiguration(igniteInstanceName);
 
         ((TcpCommunicationSpi)cfg.getCommunicationSpi()).setSharedMemoryPort(-1);
-
-        ((TcpDiscoverySpi)cfg.getDiscoverySpi()).setForceServerMode(true);
 
         cfg.setIncludeEventTypes(
             EVT_CACHE_OBJECT_READ,

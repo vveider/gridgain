@@ -16,6 +16,8 @@
 
 package org.apache.ignite.internal.processors.cache.distributed;
 
+import javax.cache.processor.EntryProcessor;
+import javax.cache.processor.MutableEntry;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -32,8 +34,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.cache.processor.EntryProcessor;
-import javax.cache.processor.MutableEntry;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteDataStreamer;
@@ -116,9 +116,6 @@ public class CacheLateAffinityAssignmentTest extends GridCommonAbstractTest {
     private boolean client;
 
     /** */
-    private boolean forceSrvMode;
-
-    /** */
     private static final String CACHE_NAME1 = "testCache1";
 
     /** */
@@ -159,7 +156,6 @@ public class CacheLateAffinityAssignmentTest extends GridCommonAbstractTest {
 
         TcpDiscoverySpi discoSpi = (TcpDiscoverySpi)cfg.getDiscoverySpi();
 
-        discoSpi.setForceServerMode(forceSrvMode);
         discoSpi.setNetworkTimeout(60_000);
 
         cfg.setClientFailureDetectionTimeout(100000);
@@ -1737,8 +1733,6 @@ public class CacheLateAffinityAssignmentTest extends GridCommonAbstractTest {
      * @throws Exception If failed.
      */
     private void clientStartFirst(int clients) throws Exception {
-        forceSrvMode = true;
-
         int topVer = 0;
 
         for (int i = 0; i < clients; i++)
@@ -1770,8 +1764,6 @@ public class CacheLateAffinityAssignmentTest extends GridCommonAbstractTest {
      */
     @Test
     public void testRandomOperations() throws Exception {
-        forceSrvMode = true;
-
         final int MAX_SRVS = GridTestUtils.SF.applyLB(10, 5);
         final int MAX_CLIENTS = GridTestUtils.SF.applyLB(10, 5);
         final int MAX_CACHES = GridTestUtils.SF.applyLB(15, 5);
