@@ -394,7 +394,11 @@ public abstract class GridCacheAbstractRemoveFailureTest extends GridCommonAbstr
                 while (!stop.get()) {
                     U.sleep(random(KILL_DELAY.get1(), KILL_DELAY.get2()));
 
-                    killAndRestart(stop, random(0, GRID_CNT + 1));
+                    int nodeToKill;
+
+                    while((nodeToKill = random(0, GRID_CNT + 1)) == clientNodeId);
+
+                    killAndRestart(stop, nodeToKill);
 
                     CyclicBarrier barrier = cmp.get();
 
