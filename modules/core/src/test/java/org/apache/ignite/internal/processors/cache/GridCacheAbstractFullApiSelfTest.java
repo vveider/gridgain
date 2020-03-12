@@ -5278,7 +5278,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
         };
 
         //Local listener should be set on client if it exists(grid1 == isClient).
-        int jcacheId = Boolean.TRUE.equals(grid(1).configuration().isClientMode()) ? 1 : 0;
+        int jcacheId = gridCount() > 1 && Boolean.TRUE.equals(grid(1).configuration().isClientMode()) ? 1 : 0;
 
         try {
             IgniteCache<String, Integer> cache = jcache(jcacheId);
