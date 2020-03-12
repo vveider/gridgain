@@ -5277,8 +5277,11 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
             }
         };
 
+        //Local listener should be set on client if it exists(grid1 == isClient).
+        int jcacheId = Boolean.TRUE.equals(grid(1).configuration().isClientMode()) ? 1 : 0;
+
         try {
-            IgniteCache<String, Integer> cache = jcache(1);
+            IgniteCache<String, Integer> cache = jcache(jcacheId);
 
             List<String> keys = primaryKeysForCache(cache, 2);
 
@@ -5287,7 +5290,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
             cache.put(keys.get(0), 0);
             cache.put(keys.get(1), 1);
 
-            grid(1).events().localListen(lsnr, EVT_CACHE_OBJECT_LOCKED, EVT_CACHE_OBJECT_UNLOCKED);
+            grid(jcacheId).events().localListen(lsnr, EVT_CACHE_OBJECT_LOCKED, EVT_CACHE_OBJECT_UNLOCKED);
 
             try (Transaction tx = transactions().txStart(PESSIMISTIC, REPEATABLE_READ)) {
                 Integer val0;
@@ -5320,7 +5323,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
                         return lockEvtCnt.get() == 0;
 
                     if (cacheMode() == PARTITIONED && nearEnabled()) {
-                        if (!grid(1).configuration().isClientMode())
+                        if (!grid(jcacheId).configuration().isClientMode())
                             return lockEvtCnt.get() == 4;
                     }
 
@@ -5329,7 +5332,7 @@ public abstract class GridCacheAbstractFullApiSelfTest extends GridCacheAbstract
             }, 15000));
         }
         finally {
-            grid(1).events().stopLocalListen(lsnr, EVT_CACHE_OBJECT_LOCKED, EVT_CACHE_OBJECT_UNLOCKED);
+            grid(jcacheId).events().stopLocalListen(lsnr, EVT_CACHE_OBJECT_LOCKED, EVT_CACHE_OBJECT_UNLOCKED);
         }
     }
 
