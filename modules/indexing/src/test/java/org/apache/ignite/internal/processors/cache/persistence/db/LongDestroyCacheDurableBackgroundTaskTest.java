@@ -80,7 +80,7 @@ public class LongDestroyCacheDurableBackgroundTaskTest extends GridCommonAbstrac
      * @throws Exception If failed.
      */
     @Test
-    public void test_0() throws Exception {
+    public void test0() throws Exception {
         IgniteEx crd = startGrids(1);
 
         String cacheName = DEFAULT_CACHE_NAME;
