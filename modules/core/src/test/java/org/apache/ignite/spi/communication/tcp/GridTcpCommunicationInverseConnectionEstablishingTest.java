@@ -19,7 +19,6 @@ package org.apache.ignite.spi.communication.tcp;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.CacheAtomicityMode;
@@ -35,7 +34,6 @@ import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
 import org.junit.Test;
 
 import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
-import static org.apache.ignite.cache.CacheAtomicityMode.TRANSACTIONAL;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 
 /**
@@ -52,13 +50,16 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
     private static final String UNRESOLVED_HOST = "unresolvedHost";
 
     /** */
+    private static final String CACHE_NAME = "cache-0";
+
+    /** */
     private boolean clientMode;
 
     /** */
     private EnvironmentType envType = EnvironmentType.STAND_ALONE;
 
     /** */
-    private CacheConfiguration[] ccfgs;
+    private CacheConfiguration ccfg;
 
     /** {@inheritDoc} */
     @Override protected void beforeTest() throws Exception {
@@ -74,6 +75,7 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
         stopAllGrids();
     }
 
+    /** {@inheritDoc} */
     @Override protected IgniteConfiguration getConfiguration(String igniteInstanceName) throws Exception {
         IgniteConfiguration cfg = super.getConfiguration(igniteInstanceName);
 
@@ -83,10 +85,10 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
 
         cfg.setCommunicationSpi(new TestCommunicationSpi());
 
-        if (ccfgs != null) {
-            cfg.setCacheConfiguration(ccfgs);
+        if (ccfg != null) {
+            cfg.setCacheConfiguration(ccfg);
 
-            ccfgs = null;
+            ccfg = null;
         }
 
         if (clientMode) {
@@ -97,26 +99,37 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
         return cfg;
     }
 
+    /**
+     * Verifies that server successfully connects to "unreachable" client with {@code EnvironmentType.VIRTUALIZED} hint.
+     *
+     * @throws Exception If failed.
+     */
     @Test
     public void testUnreachableClientInVirtualizedEnvironment() throws Exception {
         executeCacheTestWithUnreachableClient(EnvironmentType.VIRTUALIZED);
     }
 
+    /**
+     * Verifies that server successfully connects to "unreachable" client with {@code EnvironmentType.STAND_ALONE} hint.
+     *
+     * @throws Exception If failed.
+     */
     @Test
     public void testUnreachableClientInStandAloneEnvironment() throws Exception {
         executeCacheTestWithUnreachableClient(EnvironmentType.STAND_ALONE);
     }
 
     /**
+     * Executes cache test with "unreachable" client.
      *
-     * @param envType
-     * @throws Exception
+     * @param envType {@code EnvironmentType} hint.
+     * @throws Exception If failed.
      */
     private void executeCacheTestWithUnreachableClient(EnvironmentType envType) throws Exception {
         int srvs = 3;
 
         for (int i = 0; i < srvs; i++) {
-            ccfgs = cacheConfigurations1();
+            ccfg = cacheConfiguration(CACHE_NAME, ATOMIC);
 
             startGrid(i);
         }
@@ -126,7 +139,46 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
 
         startGrid(srvs);
 
-        checkCaches(srvs + 1, 2, false);
+        putAndCheckKey();
+    }
+
+    /**
+     * @param name Cache name.
+     * @param atomicityMode Atomicity mode.
+     * @return Cache configuration.
+     */
+    protected final CacheConfiguration cacheConfiguration(String name, CacheAtomicityMode atomicityMode) {
+        CacheConfiguration ccfg = new CacheConfiguration(name);
+
+        ccfg.setWriteSynchronizationMode(FULL_SYNC);
+        ccfg.setAtomicityMode(atomicityMode);
+        ccfg.setBackups(1);
+
+        return ccfg;
+    }
+
+    /**
+     * Puts a key to a server that is backup for the key and doesn't have an open communication connection to client.
+     * This forces the server to establish a connection to "unreachable" client.
+     */
+    private void putAndCheckKey() {
+        int key = 0;
+        IgniteEx srv2 = grid(2);
+
+        for (int i = 0; i < 1_000; i++) {
+            if (srv2.affinity(CACHE_NAME).isBackup(srv2.localNode(), i)) {
+                key = i;
+
+                break;
+            }
+        }
+
+        IgniteEx cl0 = grid(3);
+
+        IgniteCache<Object, Object> cache = cl0.cache(CACHE_NAME);
+
+        cache.put(key, key);
+        assertEquals(key, cache.get(key));
     }
 
     /** */
@@ -152,65 +204,6 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
          */
         private String createAttributeName(String name) {
             return getClass().getSimpleName() + '.' + name;
-        }
-    }
-
-    /** */
-    static final String CACHE_NAME_PREFIX = "cache-";
-
-    /**
-     * @param name Cache name.
-     * @param atomicityMode Atomicity mode.
-     * @return Cache configuration.
-     */
-    protected final CacheConfiguration cacheConfiguration(String name, CacheAtomicityMode atomicityMode) {
-        CacheConfiguration ccfg = new CacheConfiguration(name);
-
-        ccfg.setWriteSynchronizationMode(FULL_SYNC);
-        ccfg.setAtomicityMode(atomicityMode);
-        ccfg.setBackups(1);
-
-        return ccfg;
-    }
-
-    /**
-     * @return Cache configurations.
-     */
-    final CacheConfiguration[] cacheConfigurations1() {
-        CacheConfiguration[] ccfgs = new CacheConfiguration[2];
-
-        ccfgs[0] = cacheConfiguration(CACHE_NAME_PREFIX + 0, ATOMIC);
-        ccfgs[1] = cacheConfiguration(CACHE_NAME_PREFIX + 1, TRANSACTIONAL);
-
-        return ccfgs;
-    }
-
-    /**
-     * @param nodes Number of nodes.
-     * @param caches Number of caches.
-     */
-    final void checkCaches(int nodes, int caches, boolean awaitExchange) throws InterruptedException {
-        if (awaitExchange)
-            awaitPartitionMapExchange();
-
-        for (int i = 0; i < nodes; i++) {
-            for (int c = 0; c < caches; c++) {
-                IgniteEx ig = ignite(i);
-
-                if (ig.configuration().isClientMode()) {
-                    IgniteCache<Integer, Integer> cache = ig.cache(CACHE_NAME_PREFIX + c);
-
-                    for (int j = 0; j < 10; j++) {
-                        ThreadLocalRandom rnd = ThreadLocalRandom.current();
-
-                        Integer key = rnd.nextInt(1000);
-
-                        cache.put(key, j);
-
-                        assertEquals((Integer)j, cache.get(key));
-                    }
-                }
-            }
         }
     }
 }
