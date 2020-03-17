@@ -97,6 +97,9 @@ public class QueryUtils {
     /** Default schema. */
     public static final String DFLT_SCHEMA = "PUBLIC";
 
+    /** Schema for system view. */
+    public static final String SCHEMA_SYS = getBoolean(IGNITE_SQL_SYSTEM_SCHEMA_NAME_IGNITE, false) ? "IGNITE" : "SYS";
+
     /** Schema for monitoring views. */
     public static final String SCHEMA_MONITORING = "MONITORING";
 
