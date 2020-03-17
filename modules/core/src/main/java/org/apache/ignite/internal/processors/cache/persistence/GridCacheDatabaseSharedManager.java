@@ -556,28 +556,20 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
 
         int pagesNum = 0;
 
-        boolean hasUserDirtyPages = false;
-
         for (DataRegion reg : dataRegions()) {
             if (!reg.config().isPersistenceEnabled())
                 continue;
 
-            IgniteBiTuple<GridMultiCollectionWrapper<FullPageId>, Boolean> nextCpPages =
-                ((PageMemoryEx)reg.pageMemory()).beginCheckpointEx(allowToReplace);
-
-            GridMultiCollectionWrapper<FullPageId> nextCpPagesCol = nextCpPages.get1();
+            GridMultiCollectionWrapper<FullPageId> nextCpPagesCol = ((PageMemoryEx) reg.pageMemory()).beginCheckpoint(allowToReplace);
 
             pagesNum += nextCpPagesCol.size();
 
             res.add(new T2<>((PageMemoryEx)reg.pageMemory(), nextCpPagesCol));
-
-            if (nextCpPages.get2())
-                hasUserDirtyPages = true;
         }
 
         currCheckpointPagesCnt = pagesNum;
 
-        return new CheckpointPagesInfoHolder(res, pagesNum, hasUserDirtyPages);
+        return new CheckpointPagesInfoHolder(res, pagesNum);
     }
 
     /**
@@ -4310,8 +4302,6 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
 
                 dirtyPagesCount = cpPagesHolder.pagesNum();
 
-                hasUserPages = !cpPagesHolder.onlySystemPages();
-
                 hasPartitionsToDestroy = !curr.destroyQueue.pendingReqs.isEmpty();
 
                 WALPointer cpPtr = null;
@@ -4342,7 +4332,7 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
                 tracker.onLockRelease();
             }
 
-            DbCheckpointListener.Context ctx = createOnCheckpointBeginContext(ctx0, dirtyPagesCount > 0, hasUserPages);
+            DbCheckpointListener.Context ctx = createOnCheckpointBeginContext(ctx0, dirtyPagesCount > 0);
 
             curr.transitTo(LOCK_RELEASED);
 
@@ -4571,8 +4561,7 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
         /** */
         private DbCheckpointListener.Context createOnCheckpointBeginContext(
             DbCheckpointListener.Context delegate,
-            boolean hasPages,
-            boolean hasUserPages
+            boolean hasPages
         ) {
             return new DbCheckpointListener.Context() {
                 /** {@inheritDoc} */
@@ -4598,11 +4587,6 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
                 /** {@inheritDoc} */
                 @Override public boolean hasPages() {
                     return hasPages;
-                }
-
-                /** {@inheritDoc} */
-                @Override public boolean hasUserPages() {
-                    return hasUserPages;
                 }
             };
         }
@@ -4738,13 +4722,6 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
 
             /** {@inheritDoc} */
             @Override public boolean hasPages() {
-                throw new IllegalStateException(
-                    "Property is unknown at this moment. You should use onCheckpointBegin() method."
-                );
-            }
-
-            /** {@inheritDoc} */
-            @Override public boolean hasUserPages() {
                 throw new IllegalStateException(
                     "Property is unknown at this moment. You should use onCheckpointBegin() method."
                 );
@@ -6025,9 +6002,6 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
 
     /** Current checkpoint pages information. */
     private static class CheckpointPagesInfoHolder {
-        /** If {@code true} there are user pages in checkpoint. */
-        private final boolean hasUserDirtyPages;
-
         /** Total pages count in cp. */
         private final int pagesNum;
 
@@ -6037,16 +6011,9 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
         /** */
         private CheckpointPagesInfoHolder(
             Collection<Map.Entry<PageMemoryEx, GridMultiCollectionWrapper<FullPageId>>> pages,
-            int num,
-            boolean hasUserPages) {
+            int num) {
             cpPages = pages;
             pagesNum = num;
-            hasUserDirtyPages = hasUserPages;
-        }
-
-        /** If {@code true} there are user pages in checkpoint. */
-        private boolean onlySystemPages() {
-            return !hasUserDirtyPages;
         }
 
         /** Total pages count in cp. */

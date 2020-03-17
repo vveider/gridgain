@@ -105,6 +105,27 @@ public abstract class GridCommandHandlerAbstractTest extends GridCommonAbstractT
     /** Last operation result. */
     protected Object lastOperationResult;
 
+    /** Persistence flag. */
+    private boolean persistent = true;
+
+    /**
+     * Persistence setter.
+     *
+     * @param pr {@code True} If persistence enable.
+     **/
+    protected void persistenceEnable(boolean pr) {
+        persistent = pr;
+    }
+
+    /**
+     * Persistence getter.
+     *
+     * @return Persistence enable flag.
+     */
+    protected boolean persistenceEnable() {
+        return persistent;
+    }
+
     /** {@inheritDoc} */
     @Override protected void beforeTestsStarted() throws Exception {
         super.beforeTestsStarted();
@@ -173,7 +194,7 @@ public abstract class GridCommandHandlerAbstractTest extends GridCommonAbstractT
             .setWalMode(WALMode.LOG_ONLY)
             .setCheckpointFrequency(checkpointFreq)
             .setDefaultDataRegionConfiguration(
-                new DataRegionConfiguration().setMaxSize(50L * 1024 * 1024).setPersistenceEnabled(true)
+                new DataRegionConfiguration().setMaxSize(50L * 1024 * 1024).setPersistenceEnabled(persistent)
             );
 
         if (dataRegionConfiguration != null)
