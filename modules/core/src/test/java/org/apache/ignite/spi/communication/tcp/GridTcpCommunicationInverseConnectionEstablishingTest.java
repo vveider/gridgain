@@ -54,7 +54,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
 
 /**
- *
+ * Tests for communication over discovery feature (inverse communication request).
  */
 public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridCommonAbstractTest {
     /** */
@@ -251,17 +251,26 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
     }
 
     /**
+     * No server threads hang even if client doesn't respond to inverse connection request.
      *
      * @throws Exception If failed.
      */
-//    @Test
+    @Test
     public void testClientSkipsInverseConnectionResponse() throws Exception {
         UNREACHABLE_DESTINATION.set(UNRESOLVED_HOST);
         RESPOND_TO_INVERSE_REQUEST.set(false);
 
-        executeCacheTestWithUnreachableClient(EnvironmentType.VIRTUALIZED);
+        startGrids(SRVS_NUM);
 
-        Thread.sleep(10_000);
+        clientMode = true;
+        envType = EnvironmentType.STAND_ALONE;
+
+        startGrid(SRVS_NUM);
+
+        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(() ->
+            grid(SRVS_NUM - 1).context().io().sendIoTest(grid(SRVS_NUM).localNode(), new byte[10], false));
+
+        assertTrue(GridTestUtils.waitForCondition(() -> fut.isDone(), 20_000));
     }
 
     /**
