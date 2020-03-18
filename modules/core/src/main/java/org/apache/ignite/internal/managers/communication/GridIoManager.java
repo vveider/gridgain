@@ -3624,6 +3624,9 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
                 fut.get(getInverseConnectionWaitTimeout());
             }
             catch (IgniteCheckedException ex) {
+                log.warning("Failed to wait for establishing inverse communication connection from node " + node,
+                    ex);
+
                 if (!fut.isDone())
                     fut.onDone(ex);
 

@@ -21,8 +21,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
+import org.apache.ignite.IgniteException;
 import org.apache.ignite.cache.CacheAtomicityMode;
 import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
@@ -30,10 +33,15 @@ import org.apache.ignite.configuration.EnvironmentType;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.GridTopic;
 import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.util.nio.GridCommunicationClient;
+import org.apache.ignite.lang.IgniteInClosure;
 import org.apache.ignite.lang.IgnitePredicate;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
+import org.apache.ignite.plugin.extensions.communication.Message;
+import org.apache.ignite.spi.IgniteSpiException;
+import org.apache.ignite.spi.communication.tcp.internal.TcpInverseConnectionResponseMessage;
 import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.GridTestUtils;
@@ -61,6 +69,15 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
 
     /** */
     private static final String CACHE_NAME = "cache-0";
+
+    /** */
+    private static final AtomicReference<String> UNREACHABLE_DESTINATION = new AtomicReference<>();
+
+    /** Allows to make client not to respond to inverse connection request. */
+    private static final AtomicBoolean RESPOND_TO_INVERSE_REQUEST = new AtomicBoolean(true);
+
+    /** */
+    private static final int SRVS_NUM = 2;
 
     /** */
     private boolean clientMode;
@@ -116,6 +133,9 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
      */
     @Test
     public void testUnreachableClientInVirtualizedEnvironment() throws Exception {
+        UNREACHABLE_DESTINATION.set(UNREACHABLE_IP);
+        RESPOND_TO_INVERSE_REQUEST.set(true);
+
         executeCacheTestWithUnreachableClient(EnvironmentType.VIRTUALIZED);
     }
 
@@ -126,6 +146,35 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
      */
     @Test
     public void testUnreachableClientInStandAloneEnvironment() throws Exception {
+        UNREACHABLE_DESTINATION.set(UNREACHABLE_IP);
+        RESPOND_TO_INVERSE_REQUEST.set(true);
+
+        executeCacheTestWithUnreachableClient(EnvironmentType.STAND_ALONE);
+    }
+
+    /**
+     * Verifies that server successfully connects to client provided unresolvable host in virtualized environment.
+     *
+     * @throws Exception If failed.
+     */
+    @Test
+    public void testClientWithUnresolvableHostInVirtualizedEnvironment() throws Exception {
+        UNREACHABLE_DESTINATION.set(UNRESOLVED_HOST);
+        RESPOND_TO_INVERSE_REQUEST.set(true);
+
+        executeCacheTestWithUnreachableClient(EnvironmentType.VIRTUALIZED);
+    }
+
+    /**
+     * Verifies that server successfully connects to client provided unresolvable host in stand-alone environment.
+     *
+     * @throws Exception If failed.
+     */
+    @Test
+    public void testClientWithUnresolvableHostInStandAloneEnvironment() throws Exception {
+        UNREACHABLE_DESTINATION.set(UNRESOLVED_HOST);
+        RESPOND_TO_INVERSE_REQUEST.set(true);
+
         executeCacheTestWithUnreachableClient(EnvironmentType.STAND_ALONE);
     }
 
@@ -188,9 +237,7 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
      * @throws Exception If failed.
      */
     private void executeCacheTestWithUnreachableClient(EnvironmentType envType) throws Exception {
-        int srvs = 3;
-
-        for (int i = 0; i < srvs; i++) {
+        for (int i = 0; i < SRVS_NUM; i++) {
             ccfg = cacheConfiguration(CACHE_NAME, ATOMIC);
 
             startGrid(i);
@@ -199,9 +246,23 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
         clientMode = true;
         this.envType = envType;
 
-        startGrid(srvs);
+        startGrid(SRVS_NUM);
 
         putAndCheckKey();
+    }
+
+    /**
+     *
+     * @throws Exception If failed.
+     */
+    @Test
+    public void testClientSkipsInverseConnectionResponse() throws Exception {
+        UNREACHABLE_DESTINATION.set(UNRESOLVED_HOST);
+        RESPOND_TO_INVERSE_REQUEST.set(false);
+
+        executeCacheTestWithUnreachableClient(EnvironmentType.VIRTUALIZED);
+
+        Thread.sleep(10_000);
     }
 
     /**
@@ -225,7 +286,7 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
      */
     private void putAndCheckKey() {
         int key = 0;
-        IgniteEx srv2 = grid(2);
+        IgniteEx srv2 = grid(SRVS_NUM - 1);
 
         for (int i = 0; i < 1_000; i++) {
             if (srv2.affinity(CACHE_NAME).isBackup(srv2.localNode(), i)) {
@@ -235,7 +296,7 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
             }
         }
 
-        IgniteEx cl0 = grid(3);
+        IgniteEx cl0 = grid(SRVS_NUM);
 
         IgniteCache<Object, Object> cache = cl0.cache(CACHE_NAME);
 
@@ -250,7 +311,7 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
             if (CLIENT_PRED.apply(node)) {
                 Map<String, Object> attrs = new HashMap<>(node.attributes());
 
-                attrs.put(createAttributeName(ATTR_ADDRS), Collections.singleton(UNREACHABLE_IP));
+                attrs.put(createAttributeName(ATTR_ADDRS), Collections.singleton(UNREACHABLE_DESTINATION.get()));
                 attrs.put(createAttributeName(ATTR_PORT), 47200);
                 attrs.put(createAttributeName(ATTR_EXT_ADDRS), Collections.emptyList());
                 attrs.put(createAttributeName(ATTR_HOST_NAMES), Collections.emptyList());
@@ -266,6 +327,22 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
          */
         private String createAttributeName(String name) {
             return getClass().getSimpleName() + '.' + name;
+        }
+
+        /** {@inheritDoc} */
+        @Override public void sendMessage(ClusterNode node, Message msg,
+            IgniteInClosure<IgniteException> ackC) throws IgniteSpiException {
+            if (msg instanceof GridIoMessage) {
+                GridIoMessage msg0 = (GridIoMessage)msg;
+
+                if (msg0.message() instanceof TcpInverseConnectionResponseMessage && !RESPOND_TO_INVERSE_REQUEST.get()) {
+                    log.info("Client skips inverse connection response to server: " + node);
+
+                    return;
+                }
+            }
+
+            super.sendMessage(node, msg, ackC);
         }
     }
 }
