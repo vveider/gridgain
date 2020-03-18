@@ -19,6 +19,8 @@ package org.apache.ignite.spi.communication.tcp;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.cache.CacheAtomicityMode;
@@ -26,15 +28,23 @@ import org.apache.ignite.cluster.ClusterNode;
 import org.apache.ignite.configuration.CacheConfiguration;
 import org.apache.ignite.configuration.EnvironmentType;
 import org.apache.ignite.configuration.IgniteConfiguration;
+import org.apache.ignite.internal.GridTopic;
 import org.apache.ignite.internal.IgniteEx;
+import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.util.nio.GridCommunicationClient;
 import org.apache.ignite.lang.IgnitePredicate;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
+import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
+import org.apache.ignite.testframework.GridTestUtils;
 import org.apache.ignite.testframework.junits.common.GridCommonAbstractTest;
+import org.junit.Assume;
 import org.junit.Test;
 
 import static org.apache.ignite.cache.CacheAtomicityMode.ATOMIC;
 import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 
 /**
  *
@@ -117,6 +127,58 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
     @Test
     public void testUnreachableClientInStandAloneEnvironment() throws Exception {
         executeCacheTestWithUnreachableClient(EnvironmentType.STAND_ALONE);
+    }
+
+    /**
+     * Verify that inverse connection can be established if client reconnects to another router server with the same id.
+     *
+     * @throws Exception If failed.
+     */
+    @Test
+    public void testClientReconnectDuringInverseConnection() throws Exception {
+        Assume.assumeThat(System.getProperty("zookeeper.forceSync"), is(nullValue()));
+
+        startGrid(0).cluster().active(true);
+
+        startGrid(1, cfg -> {
+            cfg.setEnvironmentType(EnvironmentType.STAND_ALONE);
+
+            cfg.setClientMode(true);
+
+            ((TcpDiscoverySpi)cfg.getDiscoverySpi()).setIpFinder(new TcpDiscoveryVmIpFinder(false)
+                .setAddresses(
+                    Collections.singletonList("127.0.0.1:47500..47502") // "47501" is a port of the client itself.
+                )
+            );
+
+            return cfg;
+        });
+
+        AtomicBoolean msgRcvd = new AtomicBoolean();
+
+        grid(1).context().io().addMessageListener(GridTopic.TOPIC_IO_TEST, (nodeId, msg, plc) -> {
+            msgRcvd.set(true);
+        });
+
+        UUID clientNodeId = grid(1).context().localNodeId();
+
+        startGrid(2);
+
+        startGrid(3);
+
+        IgniteInternalFuture<?> fut = GridTestUtils.runAsync(() -> {
+            ClusterNode clientNode = grid(3).context().discovery().node(clientNodeId);
+
+            grid(3).context().io().sendIoTest(clientNode, new byte[10], false);
+        });
+
+        doSleep(2000L); // Client failover timeout is 8 seconds.
+
+        stopGrid(0);
+
+        fut.get(8000L);
+
+        assertTrue(GridTestUtils.waitForCondition(msgRcvd::get, 1000L));
     }
 
     /**
