@@ -25,12 +25,17 @@ public class RemoveCacheDataDurableBackgroundTask implements DurableBackgroundTa
 
     private final int groupId;
 
+    public RemoveCacheDataDurableBackgroundTask(int cacheId, int groupId) {
+        this.cacheId = cacheId;
+        this.groupId = groupId;
+    }
+
     @Override public String shortName() {
         return null;
     }
 
     @Override public void execute(GridKernalContext ctx) {
-        CacheGroupContext grp = ctx.cache().cacheGroup(groupId);
+        /*CacheGroupContext grp = ctx.cache().cacheGroup(groupId);
 
         IgniteCacheOffheapManager.CacheDataStore store = new RemovingCacheDataStore();
 
@@ -40,6 +45,6 @@ public class RemoveCacheDataDurableBackgroundTask implements DurableBackgroundTa
     private class RemovingCacheDataStore extends GridCacheOffheapManager.GridCacheDataStore {
         public RemovingCacheDataStore() {
             super();
-        }
+        }*/
     }
 }
