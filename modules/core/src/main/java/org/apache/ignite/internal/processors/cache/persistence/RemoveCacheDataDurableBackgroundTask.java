@@ -16,14 +16,30 @@
 package org.apache.ignite.internal.processors.cache.persistence;
 
 import org.apache.ignite.internal.GridKernalContext;
+import org.apache.ignite.internal.processors.cache.CacheGroupContext;
+import org.apache.ignite.internal.processors.cache.IgniteCacheOffheapManager;
 import org.apache.ignite.internal.processors.cache.persistence.metastorage.pendingtask.DurableBackgroundTask;
 
 public class RemoveCacheDataDurableBackgroundTask implements DurableBackgroundTask {
+    private final int cacheId;
+
+    private final int groupId;
+
     @Override public String shortName() {
         return null;
     }
 
     @Override public void execute(GridKernalContext ctx) {
+        CacheGroupContext grp = ctx.cache().cacheGroup(groupId);
 
+        IgniteCacheOffheapManager.CacheDataStore store = new RemovingCacheDataStore();
+
+        store.clear(cacheId);
+    }
+
+    private class RemovingCacheDataStore extends GridCacheOffheapManager.GridCacheDataStore {
+        public RemovingCacheDataStore() {
+            super();
+        }
     }
 }
