@@ -954,7 +954,6 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
         return (IgniteEx)startGrid(igniteInstanceName, (GridSpringResourceContext)null);
     }
 
-
     /**
      * Starts new grid with given name.
      *

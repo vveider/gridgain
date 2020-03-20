@@ -3544,20 +3544,28 @@ public class IgniteConfiguration {
     }
 
     /**
+     * <b>This is an experimental feature. Envronment awareness approac may be changed.</b>
+     * <p>
+     *
      * Configured environment type.
      *
      * @return {@link EnvironmentType environment type}.
      */
+    @IgniteExperimental
     public EnvironmentType getEnvironmentType() {
         return envType;
     }
 
     /**
+     * <b>This is an experimental feature. Envronment awareness approac may be changed.</b>
+     * <p>
+     *
      * Sets environment type hint.
      *
      * @param environmentType Environment type value.
      * @return {@code this} for chaining.
      */
+    @IgniteExperimental
     public IgniteConfiguration setEnvironmentType(EnvironmentType environmentType) {
         this.envType = environmentType;
 

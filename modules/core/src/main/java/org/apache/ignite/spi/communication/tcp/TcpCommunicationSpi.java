@@ -317,7 +317,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
     public static final String ATTR_PAIRED_CONN = "comm.tcp.pairedConnection";
 
     /** Attribute with information of {@link EnvironmentType environment} local node is started in. */
-    public static final String ATTR_ENVIRONMENT_TYPE = "comm.enrivonment.type";
+    public static final String ATTR_ENVIRONMENT_TYPE = "comm.environment.type";
 
     /** Default port which node sets listener to (value is <tt>47100</tt>). */
     public static final int DFLT_PORT = 47100;
@@ -633,7 +633,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
                 if (ses.remoteAddress() == null)
                     return;
 
-                assert msg instanceof HandshakeMessage : msg; // wtf, NodeIdMessage?
+                assert msg instanceof HandshakeMessage : msg;
 
                 HandshakeMessage msg0 = (HandshakeMessage)msg;
 
@@ -2241,7 +2241,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
         EnvironmentType envType = ignite.configuration().getEnvironmentType();
 
         if (usePairedConnections) {
-            if (envType.equals(EnvironmentType.VIRTUALIZED))
+            if (envType == EnvironmentType.VIRTUALIZED)
                 throw new IgniteSpiException("Node using paired connections " +
                     "is not allowed to start in virtualized environment.");
         }
@@ -2871,7 +2871,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
                 if (stopping)
                     throw new IgniteSpiException("Node is stopping.", t);
 
-//                log.error("Failed to send message to remote node [node=" + node + ", msg=" + msg + ']', t);
+                log.error("Failed to send message to remote node [node=" + node + ", msg=" + msg + ']', t);
 
                 if (t instanceof Error)
                     throw (Error)t;
@@ -2916,11 +2916,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
 
             newClients[rmvClient.connectionIndex()] = null;
 
-            if (clients.replace(nodeId, curClients, newClients)) {
-                log.info("<!> remove node client " + nodeId + " : " + rmvClient.connectionIndex());
-
+            if (clients.replace(nodeId, curClients, newClients))
                 return true;
-            }
         }
     }
 
@@ -2960,10 +2957,8 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
                 newClients = curClients.clone();
                 newClients[connIdx] = addClient;
 
-                if (clients.replace(node.id(), curClients, newClients)) {
-                    log.info("<!> add node client " + node.id() + " : " + connIdx);
+                if (clients.replace(node.id(), curClients, newClients))
                     break;
-                }
             }
         }
     }
@@ -3707,11 +3702,12 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
                         break;
                     }
 
-                    //inverse communication protocol works only for client nodes
+                    // Inverse communication protocol works only for client nodes.
                     if (node.isClient() && isNodeUnreachableException(e)) {
                         failedAddrsSet.add(addr);
 
-                        //for client nodes in virtualized environments inverse protocol is triggered after first failed connection
+                        // For client nodes in virtualized environments inverse protocol is triggered after first failed
+                        // connection.
                         if ((startedInVirtualizedEnvironment(node) && failedAddrsSet.size() == 1)) {
                             GridFutureAdapter<GridCommunicationClient> fut = clientFuts.get(
                                 new ConnectionKey(node.id(), connIdx, -1));
@@ -4218,7 +4214,7 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
     private boolean startedInVirtualizedEnvironment(ClusterNode node) {
         EnvironmentType envType = node.attribute(createSpiAttributeName(ATTR_ENVIRONMENT_TYPE));
 
-        return envType != null && envType.equals(EnvironmentType.VIRTUALIZED);
+        return envType == EnvironmentType.VIRTUALIZED;
     }
 
     /**

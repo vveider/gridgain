@@ -32,15 +32,14 @@ import org.apache.ignite.configuration.EnvironmentType;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.GridTopic;
 import org.apache.ignite.internal.IgniteEx;
-import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.IgniteInternalFuture;
+import org.apache.ignite.internal.managers.communication.GridIoMessage;
 import org.apache.ignite.internal.util.nio.GridCommunicationClient;
 import org.apache.ignite.lang.IgniteInClosure;
-import org.apache.ignite.lang.IgnitePredicate;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.plugin.extensions.communication.Message;
 import org.apache.ignite.spi.IgniteSpiException;
 import org.apache.ignite.spi.communication.tcp.internal.TcpInverseConnectionResponseMessage;
+import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.internal.TcpDiscoveryNode;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
 import org.apache.ignite.testframework.GridTestUtils;
@@ -57,8 +56,6 @@ import static org.hamcrest.CoreMatchers.nullValue;
  * Tests for communication over discovery feature (inverse communication request).
  */
 public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridCommonAbstractTest {
-    /** */
-    private static final IgnitePredicate<ClusterNode> CLIENT_PRED = c -> c.isClient();
 
     /** */
     private static final String UNREACHABLE_IP = "172.31.30.132";
@@ -316,7 +313,7 @@ public class GridTcpCommunicationInverseConnectionEstablishingTest extends GridC
     private static class TestCommunicationSpi extends TcpCommunicationSpi {
         /** {@inheritDoc} */
         @Override protected GridCommunicationClient createTcpClient(ClusterNode node, int connIdx) throws IgniteCheckedException {
-            if (CLIENT_PRED.apply(node)) {
+            if (node.isClient()) {
                 Map<String, Object> attrs = new HashMap<>(node.attributes());
 
                 attrs.put(createAttributeName(ATTR_ADDRS), Collections.singleton(UNREACHABLE_DESTINATION.get()));

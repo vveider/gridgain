@@ -48,10 +48,10 @@ public class NodeUnreachableException extends IgniteSpiException {
     /** */
     public final int connIdx;
     /** */
-    public transient GridFutureAdapter fut;
+    public transient final GridFutureAdapter<?> fut;
 
     /** */
-    public NodeUnreachableException(String msg, @Nullable Throwable cause, UUID nodeId, int connIdx, GridFutureAdapter fut) {
+    public NodeUnreachableException(String msg, @Nullable Throwable cause, UUID nodeId, int connIdx, GridFutureAdapter<?> fut) {
         super(msg, cause);
         this.nodeId = nodeId;
         this.connIdx = connIdx;
