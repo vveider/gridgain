@@ -389,7 +389,7 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
     /**
      * @return Test resources.
      */
-    protected IgniteTestResources getTestResources() throws IgniteCheckedException {
+    protected IgniteTestResources getTestResources() {
         return getIgniteTestResources();
     }
 
@@ -397,7 +397,7 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
      * @param cfg Ignite configuration.
      * @return Test resources.
      */
-    protected IgniteTestResources getTestResources(IgniteConfiguration cfg) throws IgniteCheckedException {
+    protected IgniteTestResources getTestResources(IgniteConfiguration cfg) {
         return getIgniteTestResources(cfg);
     }
 
@@ -1216,9 +1216,8 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
      *
      * @param cfg Configuration.
      * @return Optimized configuration (by modifying passed in one).
-     * @throws IgniteCheckedException On error.
      */
-    protected IgniteConfiguration optimize(IgniteConfiguration cfg) throws IgniteCheckedException {
+    protected IgniteConfiguration optimize(IgniteConfiguration cfg) {
         if (cfg.getLocalHost() == null) {
             if (cfg.getDiscoverySpi() instanceof TcpDiscoverySpi) {
                 cfg.setLocalHost("127.0.0.1");
@@ -1289,7 +1288,7 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
             info(">>> Stopping grid [name=" + ignite.name() + ", id=" + id + ']');
 
             if (!isRemoteJvm(igniteInstanceName))
-                G.stop(igniteInstanceName, cancel);
+                IgnitionEx.stop(igniteInstanceName, cancel, null, false);
             else
                 IgniteProcessProxy.stop(igniteInstanceName, cancel);
 
@@ -2080,7 +2079,7 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
     /**
      * @return Test resources.
      */
-    private synchronized IgniteTestResources getIgniteTestResources() throws IgniteCheckedException {
+    private synchronized IgniteTestResources getIgniteTestResources()  {
         IgniteTestResources rsrcs = tests.get(getClass());
 
         if (rsrcs == null)
@@ -2092,9 +2091,8 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
     /**
      * @param cfg Ignite configuration.
      * @return Test resources.
-     * @throws IgniteCheckedException In case of error.
      */
-    private synchronized IgniteTestResources getIgniteTestResources(IgniteConfiguration cfg) throws IgniteCheckedException {
+    private synchronized IgniteTestResources getIgniteTestResources(IgniteConfiguration cfg) {
         return new IgniteTestResources(cfg);
     }
 
