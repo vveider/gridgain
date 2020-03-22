@@ -2922,7 +2922,7 @@ public class IgniteCacheOffheapManagerImpl implements IgniteCacheOffheapManager 
             }
 
             if (ex != null)
-                throw new IgniteCheckedException("Fail destroy store", ex);
+                throw new IgniteCheckedException("Failed to destroy store", ex);
         }
 
         /** {@inheritDoc} */
