@@ -19,9 +19,8 @@ package org.apache.ignite.internal.pagemem.wal.record;
 import java.util.Base64;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.binary.BinaryObject;
+import org.apache.ignite.internal.processors.cache.CacheObject;
 import org.apache.ignite.internal.processors.cache.CacheObjectValueContext;
-import org.apache.ignite.internal.util.GridStringBuilder;
-import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 
 /**
@@ -58,56 +57,60 @@ public interface UnwrappedDataEntry {
         String superToString,
         final CacheObjectValueContext cacheObjValCtx
     ) {
-        final Object key = entry.unwrappedKey();
+        final String keyStr= toString(entry, false, cacheObjValCtx);
 
-        String keyStr;
-        if (key instanceof String) {
-            keyStr = (String)key;
-        }
-        else if (key instanceof BinaryObject) {
-            keyStr = key.toString();
-        }
-        else {
-            keyStr = (key != null) ? toStringRecursive(key.getClass(), key) : null;
-        }
+        final String valueStr= toString(entry, true, cacheObjValCtx);
 
-        if (F.isEmpty(keyStr)) {
-            try {
-                keyStr = Base64.getEncoder().encodeToString(entry.key().valueBytes(cacheObjValCtx));
-            }
-            catch (IgniteCheckedException e) {
-                cacheObjValCtx.kernalContext().log(UnwrapDataEntry.class)
-                    .error("Unable to convert key [" + entry.key() + "]", e);
-            }
-        }
+        return entry.getClass().getSimpleName() + "[k = " + keyStr + ", v = ["
+            + valueStr
+            + "], super = ["
+            + superToString + "]]";
+    }
 
-        final Object value = entry.unwrappedValue();
-
-        String valueStr;
-        if (value instanceof String) {
-            valueStr = (String)value;
-        }
+    /**
+     * Returns a string representation of the entry key or entry value.
+     *
+     * @param entry          Object to get a string presentation for.
+     * @param isValue  If {@code true} then function return string representation of the entry value else entry key.
+     * @param cacheObjValCtx Cache object value context. Context is used for unwrapping objects.
+     * @param <T>            Composite type: extends DataEntry implements UnwrappedDataEntry
+     * @return String presentation of the entry key or entry value depends on {@code isValue}.
+     */
+    public static <T extends DataEntry & UnwrappedDataEntry> String toString(T entry,
+        boolean isValue,
+        final CacheObjectValueContext cacheObjValCtx
+    ) {
+        final Object value;
+        if (isValue)
+            value = entry.unwrappedValue();
         else
-        if (value instanceof BinaryObject) {
-            valueStr = value.toString();
-        }
-        else {
-            valueStr = (value != null) ? toStringRecursive(value.getClass(), value) : null;
-        }
+            value = entry.unwrappedKey();
 
-        if (F.isEmpty(valueStr)) {
+        String str;
+        if (value instanceof String)
+            str = (String)value;
+        else if (value instanceof BinaryObject)
+            str = value.toString();
+        else
+            str = (value != null) ? toStringRecursive(value.getClass(), value) : null;
+
+        if (str == null || str.isEmpty()) {
+            final CacheObject co;
+            if (isValue)
+                co = entry.value();
+            else
+                co = entry.key();
+
             try {
-                valueStr = Base64.getEncoder().encodeToString(entry.value().valueBytes(cacheObjValCtx));
+                str = Base64.getEncoder().encodeToString(co.valueBytes(cacheObjValCtx));
             }
             catch (IgniteCheckedException e) {
                 cacheObjValCtx.kernalContext().log(UnwrapDataEntry.class)
-                    .error("Unable to convert value [" + entry.value() + "]", e);
+                    .error("Unable to convert " + (isValue ? "value" : "key") + " [" + co + "]", e);
             }
         }
 
-        return new GridStringBuilder(entry.getClass().getSimpleName())
-            .a("[k = ").a(keyStr).a(", v = [").a(valueStr).a("], super = [").a(superToString).a("]]")
-            .toString();
+        return str;
     }
 
     /**
