@@ -699,6 +699,8 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
             if (!keepSerializedObjects())
                 serializedObj.clear();
 
+            info("setContextClassLoader " + clsLdr);
+
             Thread.currentThread().setContextClassLoader(clsLdr);
 
             clsLdr = null;
