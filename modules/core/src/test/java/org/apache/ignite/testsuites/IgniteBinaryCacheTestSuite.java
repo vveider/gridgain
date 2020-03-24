@@ -67,21 +67,21 @@ public class IgniteBinaryCacheTestSuite {
 
         List<Class<?>> suite = new ArrayList<>(IgniteCacheTestSuite.suite(ignoredTests));
 
-        GridTestUtils.addTestIfNeeded(suite, GridCacheBinariesPartitionedOnlyByteArrayValuesSelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, GridCacheBinariesNearPartitionedByteArrayValuesSelfTest.class, ignoredTests);
-
-        GridTestUtils.addTestIfNeeded(suite, GridDataStreamerImplSelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, DataStreamProcessorBinarySelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, DataStreamProcessorPersistenceBinarySelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryDataStreamerMultiNodeSelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryDataStreamerMultithreadedSelfTest.class, ignoredTests);
-
-        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryMultiNodeSelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryMultithreadedSelfTest.class, ignoredTests);
-
-        GridTestUtils.addTestIfNeeded(suite, GridCacheAffinityRoutingBinarySelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, GridBinaryCacheEntryMemorySizeSelfTest.class, ignoredTests);
-        GridTestUtils.addTestIfNeeded(suite, CacheKeepBinaryWithInterceptorTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheBinariesPartitionedOnlyByteArrayValuesSelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheBinariesNearPartitionedByteArrayValuesSelfTest.class, ignoredTests);
+//
+//        GridTestUtils.addTestIfNeeded(suite, GridDataStreamerImplSelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, DataStreamProcessorBinarySelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, DataStreamProcessorPersistenceBinarySelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryDataStreamerMultiNodeSelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryDataStreamerMultithreadedSelfTest.class, ignoredTests);
+//
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryMultiNodeSelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheAtomicPartitionedOnlyBinaryMultithreadedSelfTest.class, ignoredTests);
+//
+//        GridTestUtils.addTestIfNeeded(suite, GridCacheAffinityRoutingBinarySelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, GridBinaryCacheEntryMemorySizeSelfTest.class, ignoredTests);
+//        GridTestUtils.addTestIfNeeded(suite, CacheKeepBinaryWithInterceptorTest.class, ignoredTests);
 
         return suite;
     }

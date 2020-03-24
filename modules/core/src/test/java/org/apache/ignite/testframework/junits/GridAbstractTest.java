@@ -2178,6 +2178,7 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
         clsLdr = Thread.currentThread().getContextClassLoader();
 
         // Change it to the class one.
+        info("setContextClassLoader prepare " + getClass() + ":" + getClass().getClassLoader());
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
         // Clear log throttle.
