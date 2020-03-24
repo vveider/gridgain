@@ -645,6 +645,8 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
     private void beforeFirstTest() throws Exception {
         sharedStaticIpFinder = new TcpDiscoveryVmIpFinder(true);
 
+        clsLdr = Thread.currentThread().getContextClassLoader();
+
         info(">>> Starting test class: " + testClassDescription() + " <<<");
 
         if (isSafeTopology())
@@ -670,6 +672,7 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
             t.printStackTrace();
 
             try {
+                // This is a very questionable solution.
                 cleanUpTestEnviroment();
             }
             catch (Exception e) {
@@ -698,8 +701,6 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
         finally {
             if (!keepSerializedObjects())
                 serializedObj.clear();
-
-            info("setContextClassLoader " + clsLdr);
 
             Thread.currentThread().setContextClassLoader(clsLdr);
 
@@ -2178,7 +2179,6 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
         clsLdr = Thread.currentThread().getContextClassLoader();
 
         // Change it to the class one.
-        info("setContextClassLoader prepare " + getClass() + ":" + getClass().getClassLoader());
         Thread.currentThread().setContextClassLoader(getClass().getClassLoader());
 
         // Clear log throttle.
