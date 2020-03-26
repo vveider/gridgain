@@ -17,11 +17,13 @@
 package org.apache.ignite.internal.processors.cache.distributed;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
 import javax.cache.Cache;
 import javax.cache.configuration.FactoryBuilder;
 import javax.cache.integration.CacheLoaderException;
@@ -40,6 +42,7 @@ import org.apache.ignite.internal.IgniteEx;
 import org.apache.ignite.internal.IgniteInternalFuture;
 import org.apache.ignite.internal.processors.datastreamer.DataStreamerImpl;
 import org.apache.ignite.internal.util.lang.GridAbsPredicate;
+import org.apache.ignite.internal.util.tostring.GridToStringBuilder;
 import org.apache.ignite.internal.util.typedef.G;
 import org.apache.ignite.internal.util.typedef.P1;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -424,6 +427,26 @@ public class CacheLoadingConcurrentGridStartSelfTest extends GridCommonAbstractT
                 return size == expectedCacheSize && expectedCacheSize == total;
             }
         }, 2 * 60_000);
+
+        if (!consistentCache) {
+            for (Ignite ign : G.allGrids()) {
+                int[] locParts = ign.affinity(DEFAULT_CACHE_NAME).primaryPartitions(ign.cluster().localNode());
+
+                info("Local parimary parts for node " + ign.cluster().localNode().id() + " " + GridToStringBuilder
+                    .compact(Arrays.stream(locParts)
+                        .boxed()
+                        .collect(Collectors.toList())));
+
+            }
+
+            int entries = 0;
+
+            for (Cache.Entry entry : cache) {
+                entries++;
+            }
+
+            info("Entries in cache: " + entries);
+        }
 
         assertTrue("Data lost. Actual cache size: " + cache.size(CachePeekMode.PRIMARY), consistentCache);
     }
