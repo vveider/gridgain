@@ -20,6 +20,7 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
+import java.io.Serializable;
 import java.io.StreamCorruptedException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -45,10 +46,12 @@ import java.util.UUID;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import javax.net.ssl.SSLException;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCheckedException;
@@ -120,6 +123,7 @@ import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryPingRequest;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryPingResponse;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryRingLatencyCheckMessage;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryServerOnlyCustomEventMessage;
+import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryTopPriorityClientMessage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -1032,6 +1036,10 @@ class ClientImpl extends TcpDiscoveryImpl {
         Ignite ignite = spi.ignite();
 
         return ignite instanceof IgniteEx ? ((IgniteEx)ignite).context().workersRegistry() : null;
+    }
+
+    public void listenTopPriorityClientMessages(BiConsumer<UUID, Serializable> lsnr) {
+        msgWorker.topPriorityLsnrs.add(lsnr);
     }
 
     /**
@@ -2134,6 +2142,8 @@ class ClientImpl extends TcpDiscoveryImpl {
                 processClientPingResponse((TcpDiscoveryClientPingResponse)msg);
             else if (msg instanceof TcpDiscoveryPingRequest)
                 processPingRequest();
+            else if (msg instanceof TcpDiscoveryTopPriorityClientMessage)
+                processTopPriorityMessage(((TcpDiscoveryTopPriorityClientMessage)msg));
 
             spi.stats.onMessageProcessingFinished(msg);
 
@@ -2144,6 +2154,14 @@ class ClientImpl extends TcpDiscoveryImpl {
                     && state == CONNECTED
                     && !(msg instanceof TcpDiscoveryClientReconnectMessage))
                 lastMsgId = msg.id();
+        }
+
+        public List<BiConsumer<UUID, Serializable>> topPriorityLsnrs = new CopyOnWriteArrayList<>();
+
+        private void processTopPriorityMessage(TcpDiscoveryTopPriorityClientMessage msg) {
+            log.info("<!> ClientImpl processing top priority message: " + msg);
+            for (BiConsumer<UUID, Serializable> lsnr : topPriorityLsnrs)
+                lsnr.accept(msg.creatorNodeId(), msg.payload());
         }
 
         /**
@@ -2687,7 +2705,10 @@ class ClientImpl extends TcpDiscoveryImpl {
          * @param msg Message.
          */
         void addMessage(Object msg) {
-            queue.add(msg);
+            if (msg instanceof TcpDiscoveryAbstractMessage && ((TcpDiscoveryAbstractMessage)msg).highPriority())
+                queue.addFirst(msg);
+            else
+                queue.add(msg);
         }
 
         /**

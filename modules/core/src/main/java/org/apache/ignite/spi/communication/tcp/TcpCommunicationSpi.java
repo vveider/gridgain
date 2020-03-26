@@ -3451,11 +3451,13 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
      * @throws IgniteCheckedException If establish connection fails.
      */
     private GridNioSession createNioSession(ClusterNode node, int connIdx) throws IgniteCheckedException {
-        if (!getLocalNode().isClient() && node.isClient() && startedInVirtualizedEnvironment(node)) {
+        if (!(getLocalNode().isClient() || getLocalNode().isDaemon()) && node.isClient() && startedInVirtualizedEnvironment(node)) {
             String msg = "Failed to connect to node " + node.id() + //FIXME
                 "; inverse connection will be requested.";
 
-            throw new NodeUnreachableException(msg, null, node.id(), connIdx, new GridFutureAdapter<>());
+            throw new NodeUnreachableException(msg, null, node.id(), connIdx, clientFuts.get(
+                new ConnectionKey(node.id(), connIdx, -1))
+            );
         }
 
         Collection<InetSocketAddress> addrs = nodeAddresses(node);

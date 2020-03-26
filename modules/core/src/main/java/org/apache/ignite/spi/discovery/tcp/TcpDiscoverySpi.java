@@ -40,6 +40,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
@@ -2458,6 +2459,14 @@ public class TcpDiscoverySpi extends IgniteSpiAdapter implements IgniteDiscovery
     /** {@inheritDoc} */
     @Override public String toString() {
         return S.toString(TcpDiscoverySpi.class, this);
+    }
+
+    public void sendTopPriorityClientMessage(UUID nodeId, Serializable payload) {
+        ((ServerImpl)impl).sendTopPriorityClientMessage(nodeId, payload);
+    }
+
+    public void listenTopPriorityClientMessages(BiConsumer<UUID, Serializable> lsnr) {
+        ((ClientImpl)impl).listenTopPriorityClientMessages(lsnr);
     }
 
     /**
