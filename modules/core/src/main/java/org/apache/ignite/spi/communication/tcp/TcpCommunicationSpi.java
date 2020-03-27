@@ -152,9 +152,9 @@ import org.apache.ignite.spi.IgniteSpiTimeoutObject;
 import org.apache.ignite.spi.TimeoutStrategy;
 import org.apache.ignite.spi.communication.CommunicationListener;
 import org.apache.ignite.spi.communication.CommunicationSpi;
-import org.apache.ignite.spi.communication.tcp.internal.NodeUnreachableException;
 import org.apache.ignite.spi.communication.tcp.internal.ConnectionKey;
 import org.apache.ignite.spi.communication.tcp.internal.HandshakeException;
+import org.apache.ignite.spi.communication.tcp.internal.NodeUnreachableException;
 import org.apache.ignite.spi.communication.tcp.internal.TcpCommunicationConnectionCheckFuture;
 import org.apache.ignite.spi.communication.tcp.internal.TcpCommunicationNodeConnectionCheckFuture;
 import org.apache.ignite.spi.communication.tcp.internal.TcpConnectionIndexAwareMessage;
@@ -164,6 +164,7 @@ import org.apache.ignite.spi.communication.tcp.messages.HandshakeWaitMessage;
 import org.apache.ignite.spi.communication.tcp.messages.NodeIdMessage;
 import org.apache.ignite.spi.communication.tcp.messages.RecoveryLastReceivedMessage;
 import org.apache.ignite.spi.discovery.DiscoverySpi;
+import org.apache.ignite.spi.discovery.IgniteDiscoveryThread;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.thread.IgniteThread;
 import org.jetbrains.annotations.Nullable;
@@ -3451,11 +3452,17 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
      * @throws IgniteCheckedException If establish connection fails.
      */
     private GridNioSession createNioSession(ClusterNode node, int connIdx) throws IgniteCheckedException {
-        if (!getLocalNode().isClient() && node.isClient() && startedInVirtualizedEnvironment(node)) {
-            String msg = "Failed to connect to node " + node.id() + //FIXME
-                "; inverse connection will be requested.";
+        if (!(Thread.currentThread() instanceof IgniteDiscoveryThread)) {
+            if (!getLocalNode().isClient() && !getLocalNode().isDaemon()) {
+                if (node.isClient() && startedInVirtualizedEnvironment(node)) {
+                    String msg = "Failed to connect to node " + node.id() + //FIXME
+                        "; inverse connection will be requested.";
 
-            throw new NodeUnreachableException(msg, null, node.id(), connIdx, new GridFutureAdapter<>());
+                    throw new NodeUnreachableException(msg, null, node.id(), connIdx, clientFuts.get(
+                        new ConnectionKey(node.id(), connIdx, -1))
+                    );
+                }
+            }
         }
 
         Collection<InetSocketAddress> addrs = nodeAddresses(node);
@@ -3475,15 +3482,9 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
             );
         }
 
-        Set<InetSocketAddress> failedAddrsSet = new HashSet<>();
-        int skippedAddrs = 0;
-
         for (InetSocketAddress addr : addrs) {
-            if (addr.isUnresolved()) {
-                failedAddrsSet.add(addr);
-
+            if (addr.isUnresolved())
                 continue;
-            }
 
             TimeoutStrategy connTimeoutStgy = new ExponentialBackoffTimeoutStrategy(
                 totalTimeout,
@@ -3500,8 +3501,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
                         log.debug("Skipping local address [addr=" + addr +
                             ", locAddrs=" + node.attribute(createSpiAttributeName(ATTR_ADDRS)) +
                             ", node=" + node + ']');
-
-                    skippedAddrs++;
 
                     break;
                 }
@@ -3718,23 +3717,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
                         break;
                     }
 
-                    // Inverse communication protocol works only for client nodes.
-                    if (node.isClient() && isNodeUnreachableException(e)) {
-                        failedAddrsSet.add(addr);
-
-                        // For client nodes in virtualized environments inverse protocol is triggered after first failed
-                        // connection.
-                        if ((startedInVirtualizedEnvironment(node) && failedAddrsSet.size() == 1)) {
-                            GridFutureAdapter<GridCommunicationClient> fut = clientFuts.get(
-                                new ConnectionKey(node.id(), connIdx, -1));
-
-                            String msg = "Failed to connect to address " + addr + " of node " + node.id() +
-                                "; inverse connection will be requested.";
-
-                            throw new NodeUnreachableException(msg, null, node.id(), connIdx, fut);
-                        }
-                    }
-
                     if (isRecoverableException(e))
                         U.sleep(DFLT_RECONNECT_DELAY);
                     else {
@@ -3763,15 +3745,6 @@ public class TcpCommunicationSpi extends IgniteSpiAdapter implements Communicati
 
             if (ses != null)
                 break;
-        }
-
-        if (ses == null && node.isClient() && (addrs.size() - skippedAddrs == failedAddrsSet.size())) {
-            String msg = "Failed to connect to all addresses of node " + node.id() + ": " + failedAddrsSet +
-                "; inverse connection will be requested.";
-
-            GridFutureAdapter<GridCommunicationClient> fut = clientFuts.get(new ConnectionKey(node.id(), connIdx, -1));
-
-            throw new NodeUnreachableException(msg, null, node.id(), connIdx, fut);
         }
 
         if (ses == null)

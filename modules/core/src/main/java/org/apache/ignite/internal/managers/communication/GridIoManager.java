@@ -111,8 +111,6 @@ import org.apache.ignite.spi.communication.tcp.internal.ConnectionKey;
 import org.apache.ignite.spi.communication.tcp.internal.NodeUnreachableException;
 import org.apache.ignite.spi.communication.tcp.internal.TcpConnectionRequestDiscoveryMessage;
 import org.apache.ignite.spi.communication.tcp.internal.TcpInverseConnectionResponseMessage;
-import org.apache.ignite.spi.discovery.IgniteDiscoveryThread;
-import org.apache.ignite.thread.IgniteThread;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -870,17 +868,6 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
         if (ctx.clientNode())
             ctx.discovery().setCustomEventListener(TcpConnectionRequestDiscoveryMessage.class, invConnHandler.discoConnReqLsnr);
 
-        addMessageListener(TOPIC_COMM_SYSTEM, (nodeId, msg, plc) -> {
-            if (msg instanceof TcpInverseConnectionResponseMessage) {
-                TcpInverseConnectionResponseMessage respMsg = (TcpInverseConnectionResponseMessage)msg;
-
-                if (log.isInfoEnabled())
-                    log.info("Received inverse connection response message: " + respMsg);
-
-                invConnHandler.onInverseConnectionResponse(nodeId, respMsg);
-            }
-        });
-
         // Make sure that there are no stale messages due to window between communication
         // manager start and kernal start.
         // 1. Process wait list.
@@ -1080,6 +1067,15 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
                 finally {
                     lock.readLock().unlock();
                 }
+            }
+
+            if (msg.message() instanceof TcpInverseConnectionResponseMessage) {
+                TcpInverseConnectionResponseMessage respMsg = (TcpInverseConnectionResponseMessage)msg.message();
+
+                if (log.isInfoEnabled())
+                    log.info("Received inverse connection response message: " + respMsg);
+
+                invConnHandler.onInverseConnectionResponse(nodeId, respMsg);
             }
 
             // If message is P2P, then process in P2P service.
@@ -3573,12 +3569,6 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
         public void handleInverseConnection(ClusterNode node, NodeUnreachableException e) {
             if (!inverseTcpConnectionFeatureIsSupported(node))
                 throw new IgniteSpiException(e);
-
-            if (IgniteThread.current() instanceof IgniteDiscoveryThread) {
-                throw new IgniteSpiException(
-                    "Inverse communication connection cannot be requested from discovery thread", e
-                );
-            }
 
             TcpCommunicationSpi tcpCommSpi = getTcpCommunicationSpi();
 
