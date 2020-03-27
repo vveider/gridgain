@@ -4132,6 +4132,14 @@ public class GridCacheProcessor extends GridProcessorAdapter {
         return cachesInfo.isRestarting(cacheName);
     }
 
+    public void onCacheDataRemoveStarted(String cacheName) {
+        cachesInfo.onCacheDataRemoveStarted(cacheName);
+    }
+
+    public void onCacheDataRemoveFinished(String cacheName) {
+        cachesInfo.onCacheDataRemoveFinished(cacheName);
+    }
+
     /**
      * @param node Joining node to validate.
      * @return Node validation result if there was an issue with the joining node, {@code null} otherwise.

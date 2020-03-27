@@ -37,6 +37,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.IgniteLogger;
+import org.apache.ignite.cache.CacheDataRemoveInProgressException;
 import org.apache.ignite.cache.CacheExistsException;
 import org.apache.ignite.cache.QueryEntity;
 import org.apache.ignite.cluster.ClusterNode;
@@ -58,6 +59,7 @@ import org.apache.ignite.internal.processors.query.QuerySchema;
 import org.apache.ignite.internal.processors.query.QuerySchemaPatch;
 import org.apache.ignite.internal.processors.query.QueryUtils;
 import org.apache.ignite.internal.processors.query.schema.SchemaOperationException;
+import org.apache.ignite.internal.util.GridConcurrentHashSet;
 import org.apache.ignite.internal.util.lang.GridFunc;
 import org.apache.ignite.internal.util.lang.GridPlainCallable;
 import org.apache.ignite.internal.util.typedef.F;
@@ -116,6 +118,9 @@ class ClusterCachesInfo {
 
     /** Caches currently being restarted (with restarter id). */
     private final ConcurrentHashMap<String, IgniteUuid> restartingCaches = new ConcurrentHashMap<>();
+
+    /** Caches contained in shared groups and currently being cleared. */
+    private final Set<String> cachesBeingRemoved = new GridConcurrentHashSet<>();
 
     /** */
     private final IgniteLogger log;
@@ -684,6 +689,15 @@ class ClusterCachesInfo {
                 if (req.failIfExists()) {
                     ctx.cache().completeCacheStartFuture(req, false,
                         new CacheExistsException("Failed to start cache (a cache is restarting): " + cacheName));
+                }
+
+                proceedFuther = false;
+            }
+
+            if (cachesBeingRemoved.contains(cacheName)) {
+                if (req.failIfExists()) {
+                    ctx.cache().completeCacheStartFuture(req, false, new CacheDataRemoveInProgressException(
+                            "Failed to start cache (cache with the same name is being removed): " + cacheName));
                 }
 
                 proceedFuther = false;
@@ -1915,6 +1929,9 @@ class ClusterCachesInfo {
                     (desc.sharedGroup() ? ", conflictingGroupName=" : ", conflictingCacheName=") + desc.cacheOrGroupName() + ']';
         }
 
+        if (cachesBeingRemoved.contains(cfg.getName()))
+            return "Cache name conflict (cache with the same name is being removed): " + cfg.getName();
+
         return null;
     }
 
@@ -2520,6 +2537,14 @@ class ClusterCachesInfo {
      */
     public void removeRestartingCaches() {
         restartingCaches.clear();
+    }
+
+    public void onCacheDataRemoveStarted(String cacheName) {
+        cachesBeingRemoved.add(cacheName);
+    }
+
+    public void onCacheDataRemoveFinished(String cacheName) {
+        cachesBeingRemoved.remove(cacheName);
     }
 
     /**

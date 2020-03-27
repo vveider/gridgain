@@ -32,6 +32,7 @@ import org.apache.ignite.internal.processors.cache.persistence.pagemem.PageMemor
 import org.apache.ignite.internal.processors.cache.tree.PendingEntriesTree;
 import org.apache.ignite.internal.processors.cache.tree.PendingRow;
 import org.apache.ignite.internal.util.lang.GridCursor;
+import org.apache.ignite.internal.util.typedef.internal.CU;
 
 /**
  *
@@ -45,9 +46,13 @@ public class RemoveCacheDataDurableBackgroundTask implements DurableBackgroundTa
 
     private CacheConfiguration cacheCfg;
 
-    public RemoveCacheDataDurableBackgroundTask(int cacheId, int grpId, CacheConfiguration cacheCfg) {
-        this.cacheId = cacheId;
-        this.grpId = grpId;
+    public RemoveCacheDataDurableBackgroundTask(CacheConfiguration cacheCfg, boolean sharedGroup) {
+        this.cacheId = CU.cacheId(cacheCfg.getName());
+
+        assert cacheId != CU.UNDEFINED_CACHE_ID;
+
+        this.grpId = CU.cacheGroupId(cacheCfg.getName(), cacheCfg.getGroupName());
+        this.sharedGroup = sharedGroup;
         this.cacheCfg = cacheCfg;
     }
 
@@ -75,17 +80,16 @@ public class RemoveCacheDataDurableBackgroundTask implements DurableBackgroundTa
         if (grpCtx == null)
             throw new IgniteException("Group with id=" + grpId + " could not be found.");
 
+        ctx.cache().onCacheDataRemoveStarted(cacheCfg.getName());
+
         ctx.cache().context().database().checkpointReadLock();
 
         try {
             removeFromCacheDataStores(grpCtx);
-
-            IgnitePageStoreManager pageStore = ctx.cache().context().pageStore();
-
-            if (pageStore != null)
-                pageStore.removeCacheData(new StoredCacheData(cacheCfg));
         } finally {
             ctx.cache().context().database().checkpointReadUnlock();
+
+            ctx.cache().onCacheDataRemoveFinished(cacheCfg.getName());
         }
     }
 
@@ -162,7 +166,5 @@ public class RemoveCacheDataDurableBackgroundTask implements DurableBackgroundTa
         }
 
         pageStore.cleanupPersistentSpace(cacheCfg);
-
-        pageStore.removeCacheData(new StoredCacheData(cacheCfg));
     }
 }
