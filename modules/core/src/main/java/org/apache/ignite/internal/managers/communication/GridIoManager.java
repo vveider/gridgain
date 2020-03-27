@@ -1836,8 +1836,11 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
 
                 tcpCommSpi.sendMessage(node, ioMsg, ackC);
             }
-            else
+            else {
+                e.fut.onDone(e);
+
                 throw e;
+            }
         }
     }
 
@@ -3581,8 +3584,22 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
 
             GridFutureAdapter<?> oldFut = connMap.putIfAbsent(connKey, fut);
 
-            if (oldFut != null)
+            if (oldFut != null) {
+                GridFutureAdapter<?> oldFut0 = fut;
+
                 fut = oldFut;
+
+                fut.listen(f -> {
+                    try {
+                        f.get();
+
+                        oldFut0.onDone();
+                    }
+                    catch (IgniteCheckedException ex) {
+                        oldFut0.onDone(ex);
+                    }
+                });
+            }
             else {
                 if (log.isDebugEnabled())
                     log.debug("Old future for connection key " + connKey + " not found, new future created.");
@@ -3611,18 +3628,28 @@ public class GridIoManager extends GridManagerAdapter<CommunicationSpi<Serializa
             try {
                 fut.get(getInverseConnectionWaitTimeout());
             }
-            catch (IgniteCheckedException ex) {
+            catch (Throwable ex) {
                 log.warning("Failed to wait for establishing inverse communication connection from node " + node,
                     ex);
 
                 if (!fut.isDone())
                     fut.onDone(ex);
 
-                IgniteSpiException spiE = new IgniteSpiException(e);
+                if (ex instanceof IgniteCheckedException) {
+                    IgniteSpiException spiE = new IgniteSpiException(e);
 
-                spiE.addSuppressed(ex);
+                    spiE.addSuppressed(ex);
 
-                throw spiE;
+                    throw spiE;
+                }
+
+                ex.addSuppressed(e);
+
+                // Can't just type "throw ex;", it won't compile :(
+                if (ex instanceof Error)
+                    throw (Error)ex;
+
+                throw (RuntimeException)ex;
             }
         }
 

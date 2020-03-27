@@ -259,7 +259,7 @@ public class IgniteConfiguration {
     public static final boolean DFLT_SQL_QUERY_OFFLOADING_ENABLED = false;
 
     /** Default value of environment type is {@link EnvironmentType#STAND_ALONE}. */
-    private static final EnvironmentType DFLT_ENV_TYPE = EnvironmentType.STAND_ALONE;
+    private static final EnvironmentType DFLT_ENV_TYPE = EnvironmentType.VIRTUALIZED;
 
     /** Optional local Ignite instance name. */
     private String igniteInstanceName;
