@@ -16,10 +16,10 @@
 
 package org.apache.ignite.agent.testsuites;
 
-import org.apache.ignite.agent.ManagementConsoleProcessorTest;
-import org.apache.ignite.agent.ManagementConsoleProcessorTest.ManagementConsoleProcessorWithMockContextTest;
+import org.apache.ignite.agent.ManagementConsoleAgentTest;
+import org.apache.ignite.agent.ManagementConsoleAgentTest.ManagementConsoleAgentWithMockContextTest;
 import org.apache.ignite.agent.action.SessionRegistryTest;
-import org.apache.ignite.agent.action.annotation.ActionControllerAnnotationProcessorTest;
+import org.apache.ignite.agent.action.annotation.ActionControllerAnnotationReaderTest;
 import org.apache.ignite.agent.action.controller.ActionControllerBaseTest;
 import org.apache.ignite.agent.action.controller.ActionControllerWithAuthenticationBaseTest;
 import org.apache.ignite.agent.action.controller.BaselineActionsControllerTest;
@@ -35,6 +35,8 @@ import org.apache.ignite.agent.processor.CacheChangesProcessorTest;
 import org.apache.ignite.agent.processor.ClusterInfoProcessorTest;
 import org.apache.ignite.agent.processor.ManagementConsoleMessagesProcessorTest;
 import org.apache.ignite.agent.processor.ManagementConsoleSpanMessagesProcessorTest;
+import org.apache.ignite.agent.processor.action.DistributedActionProcessorTest;
+import org.apache.ignite.agent.processor.action.DistributedActionProcessorWithAuthenticationTest;
 import org.apache.ignite.agent.processor.export.EventsExporterTest;
 import org.apache.ignite.agent.processor.export.SpanExporterTest;
 import org.apache.ignite.agent.processor.metrics.MetricsProcessorTest;
@@ -47,14 +49,14 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 /**
- * Management console agent test suite.
+ * Control Center agent test suite.
  */
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-    ManagementConsoleProcessorTest.class,
-    ManagementConsoleProcessorWithMockContextTest.class,
+    ManagementConsoleAgentTest.class,
+    ManagementConsoleAgentWithMockContextTest.class,
     SessionRegistryTest.class,
-    ActionControllerAnnotationProcessorTest.class,
+    ActionControllerAnnotationReaderTest.class,
     ActionControllerBaseTest.class,
     ActionControllerWithAuthenticationBaseTest.class,
     BaselineActionsControllerTest.class,
@@ -70,6 +72,8 @@ import org.junit.runners.Suite;
     ClusterInfoProcessorTest.class,
     ManagementConsoleMessagesProcessorTest.class,
     ManagementConsoleSpanMessagesProcessorTest.class,
+    DistributedActionProcessorTest.class,
+    DistributedActionProcessorWithAuthenticationTest.class,
     EventsExporterTest.class,
     SpanExporterTest.class,
     MetricsProcessorTest.class,

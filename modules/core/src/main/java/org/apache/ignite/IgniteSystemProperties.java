@@ -31,10 +31,13 @@ import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.internal.client.GridClient;
 import org.apache.ignite.internal.marshaller.optimized.OptimizedMarshaller;
+import org.apache.ignite.internal.processors.cache.persistence.checkpoint.CheckpointEntry;
 import org.apache.ignite.internal.processors.metastorage.DistributedMetaStorage;
 import org.apache.ignite.internal.processors.metric.GridMetricManager;
 import org.apache.ignite.internal.processors.rest.GridRestCommand;
 import org.apache.ignite.internal.util.GridLogThrottle;
+import org.apache.ignite.internal.util.tostring.GridToStringBuilder;
+import org.apache.ignite.lang.IgniteExperimental;
 import org.apache.ignite.stream.StreamTransformer;
 import org.jetbrains.annotations.Nullable;
 
@@ -190,6 +193,15 @@ public final class IgniteSystemProperties {
 
     /** Maximum length for {@code toString()} result. */
     public static final String IGNITE_TO_STRING_MAX_LENGTH = "IGNITE_TO_STRING_MAX_LENGTH";
+
+    /**
+     * Boolean flag indicating whether {@link GridToStringBuilder} should throw {@link RuntimeException}
+     * when building string representation of an object or should just print information about exception into the log
+     * and proceed.
+     *
+     * {@code False} by default.
+     */
+    public static final String IGNITE_TO_STRING_THROW_RUNTIME_EXCEPTION = "IGNITE_TO_STRING_THROW_RUNTIME_EXCEPTION";
 
     /**
      * Limit collection (map, array) elements number to output.
@@ -531,6 +543,9 @@ public final class IgniteSystemProperties {
 
     /** Enable backward compatible handling of UUID through DDL. */
     public static final String IGNITE_SQL_UUID_DDL_BYTE_FORMAT = "IGNITE_SQL_UUID_DDL_BYTE_FORMAT";
+
+    /** Enable memory quotas per JDBC connection. */
+    public static final String IGNITE_SQL_ENABLE_CONNECTION_MEMORY_QUOTA = "IGNITE_SQL_ENABLE_CONNECTION_MEMORY_QUOTA";
 
     /** Maximum size for affinity assignment history. */
     public static final String IGNITE_AFFINITY_HISTORY_SIZE = "IGNITE_AFFINITY_HISTORY_SIZE";
@@ -964,6 +979,15 @@ public final class IgniteSystemProperties {
     public static final String IGNITE_DISABLE_WAL_DURING_REBALANCING = "IGNITE_DISABLE_WAL_DURING_REBALANCING";
 
     /**
+     * When property is set {@code false} each next exchange will try to compare with previous.
+     * If last rebalance is equivalent with new possible one, new rebalance does not trigger.
+     * Set the property {@code true} and each exchange will try to trigger new rebalance.
+     *
+     * Default is {@code false}.
+     */
+    public static final String IGNITE_DISABLE_REBALANCING_CANCELLATION_OPTIMIZATION = "IGNITE_DISABLE_REBALANCING_CANCELLATION_OPTIMIZATION";
+
+    /**
      * Sets timeout for TCP client recovery descriptor reservation.
      */
     public static final String IGNITE_NIO_RECOVERY_DESCRIPTOR_RESERVATION_TIMEOUT =
@@ -986,6 +1010,14 @@ public final class IgniteSystemProperties {
      * Default is {@code true}.
      */
     public static final String IGNITE_DUMP_THREADS_ON_FAILURE = "IGNITE_DUMP_THREADS_ON_FAILURE";
+
+    /**
+     * Throttling time out for thread dump generation during failure handling.
+     *
+     * Default is failure detection timeout. {@code 0} or negative value - throttling is disabled.
+     */
+    public static final String IGNITE_DUMP_THREADS_ON_FAILURE_THROTTLING_TIMEOUT =
+            "IGNITE_DUMP_THREADS_ON_FAILURE_THROTTLING_TIMEOUT";
 
     /**
      * Throttling timeout in millis which avoid excessive PendingTree access on unwind if there is nothing to clean yet.
@@ -1201,23 +1233,6 @@ public final class IgniteSystemProperties {
     public static final String IGNITE_H2_LOCAL_RESULT_FACTORY = "IGNITE_H2_LOCAL_RESULT_FACTORY";
 
     /**
-     * Defines default memory limit for every single sql query (query quota).
-     * Note: Negative value disables memory tracking (for both: query and global quotas) for query by default.
-     *
-     * Default: MaxHeapSize/AvailableCPUs.
-     */
-    public static final String IGNITE_DEFAULT_SQL_QUERY_MEMORY_LIMIT = "IGNITE_DEFAULT_SQL_QUERY_MEMORY_LIMIT";
-
-    /**
-     * Defines memory pool size available for sql queries on node (global quota).
-     * Note: Negative value disables global memory quota for SQL, but it doesn't affects query quota.
-     *
-     * Default: 60% MaxHeapSize.
-     */
-
-    public static final String IGNITE_DEFAULT_SQL_MEMORY_POOL_SIZE = "IGNITE_DEFAULT_SQL_MEMORY_POOL_SIZE";
-
-    /**
      * Defines default memory reservation block size.
      *
      * Default: 512K.
@@ -1279,14 +1294,6 @@ public final class IgniteSystemProperties {
      */
     public static final String IGNITE_ENABLE_HASH_JOIN = "IGNITE_ENABLE_HASH_JOIN";
 
-    /**
-     * Index rebuilding parallelism level. If specified, sets the count of threads that are used for index rebuilding
-     * and can only be greater than <code>0</code>, otherwise default value will be used. Maximum count of threads
-     * can't be greater than total available processors count.
-     * Default value is minimum of <code>4</code> and processors count / 4, but always greater than <code>0</code>.
-     */
-    public static final String INDEX_REBUILDING_PARALLELISM = "INDEX_REBUILDING_PARALLELISM";
-
     /** Enable write rebalnce statistics into log. Default: false */
     public static final String IGNITE_WRITE_REBALANCE_STATISTICS = "IGNITE_WRITE_REBALANCE_STATISTICS";
 
@@ -1323,6 +1330,48 @@ public final class IgniteSystemProperties {
      */
     public static final String IGNITE_DISABLE_SMART_DR_THROTTLING =
         "IGNITE_DISABLE_SMART_DR_THROTTLING";
+
+    /*
+     * Disable onheap caching of pages lists (free lists and reuse lists).
+     * If persistence is enabled changes to page lists are not stored to page memory immediately, they are cached in
+     * onheap buffer and flushes to page memory on a checkpoint. This property allows to disable such onheap caching.
+     * Default value is <code>false</code>.
+     */
+    public static final String IGNITE_PAGES_LIST_DISABLE_ONHEAP_CACHING = "IGNITE_PAGES_LIST_DISABLE_ONHEAP_CACHING";
+
+    /**
+     * Disable group state lazy store. It means that group state won't be cached for {@link CheckpointEntry} and will be
+     * read from wal every time. Should be used for test purposes only.
+     */
+    public static final String IGNITE_DISABLE_GRP_STATE_LAZY_STORE = "IGNITE_DISABLE_GRP_STATE_LAZY_STORE";
+
+    /**
+     * Enables extended logging of indexes create/rebuild process. Default {@code false}.
+     * <p/>
+     * <b>Warning</b>: enabling that option can lead to performance degradation of index creation, rebuilding and  node
+     * restart.
+     */
+    public static final String IGNITE_ENABLE_EXTRA_INDEX_REBUILD_LOGGING = "IGNITE_ENABLE_EXTRA_INDEX_REBUILD_LOGGING";
+
+    /**
+     * When enabled, node will wait until all of its data is backed up before shutting down.
+     * Please note that it will completely prevent last node in cluster from shutting down if any caches exist
+     * that have backups configured.
+     */
+    @IgniteExperimental
+    public static final String IGNITE_WAIT_FOR_BACKUPS_ON_SHUTDOWN = "IGNITE_WAIT_FOR_BACKUPS_ON_SHUTDOWN";
+
+    /**
+     * Choose the index cost function. May be used to compatibility with old version
+     * .
+     * The possible values:
+     *         - "LAST",
+     *         - "COMPATIBLE_8_7_12",
+     *         - COMPATIBLE_8_7_6
+     *
+     * The last cost function is used by default.
+     */
+    public static final String IGNITE_INDEX_COST_FUNCTION = "IGNITE_INDEX_COST_FUNCTION";
 
     /**
      * Enforces singleton.

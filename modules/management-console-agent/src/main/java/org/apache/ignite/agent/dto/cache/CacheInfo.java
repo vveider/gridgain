@@ -17,51 +17,56 @@
 package org.apache.ignite.agent.dto.cache;
 
 import org.apache.ignite.internal.util.typedef.internal.S;
-import org.apache.ignite.lang.IgniteUuid;
 
 /**
  * DTO for cache info.
  */
 public class CacheInfo {
     /** Cache name. */
-    private String name;
+    private String cacheName;
 
-    /** Deployment id. */
-    private IgniteUuid deploymentId;
+    /** Cache ID. */
+    private int cacheId;
+
+    /** Created by sql. */
+    private boolean createdBySql;
 
     /** Cache group. */
-    private String grp;
+    private String cacheGroup;
+
+    /** System cache. */
+    private boolean sysCache;
 
     /**
      * @return Cache name.
      */
-    public String getName() {
-        return name;
+    public String getCacheName() {
+        return cacheName;
     }
 
     /**
-     * @param name Name.
+     * @param cacheName Name.
      * @return {@code This} for chaining method calls.
      */
-    public CacheInfo setName(String name) {
-        this.name = name;
+    public CacheInfo setCacheName(String cacheName) {
+        this.cacheName = cacheName;
 
         return this;
     }
 
     /**
-     * @return Deployment id.
+     * @return Cache ID.
      */
-    public IgniteUuid getDeploymentId() {
-        return deploymentId;
+    public int getCacheId() {
+        return cacheId;
     }
 
     /**
-     * @param deploymentId Deployment id.
+     * @param cacheId Cache ID.
      * @return {@code This} for chaining method calls.
      */
-    public CacheInfo setDeploymentId(IgniteUuid deploymentId) {
-        this.deploymentId = deploymentId;
+    public CacheInfo setCacheId(int cacheId) {
+        this.cacheId = cacheId;
 
         return this;
     }
@@ -69,16 +74,50 @@ public class CacheInfo {
     /**
      * @return Cache group.
      */
-    public String getGroup() {
-        return grp;
+    public String getCacheGroup() {
+        return cacheGroup;
     }
 
     /**
-     * @param grp Group.
+     * @param cacheGroup Group.
      * @return {@code This} for chaining method calls.
      */
-    public CacheInfo setGroup(String grp) {
-        this.grp = grp;
+    public CacheInfo setCacheGroup(String cacheGroup) {
+        this.cacheGroup = cacheGroup;
+
+        return this;
+    }
+
+    /**
+     * @return {@code True} if cache was create by SQL query.
+     */
+    public boolean isCreatedBySql() {
+        return createdBySql;
+    }
+
+    /**
+     * @param createdBySql Created by sql.
+     * @return {@code This} for chaining method calls.
+     */
+    public CacheInfo setCreatedBySql(boolean createdBySql) {
+        this.createdBySql = createdBySql;
+
+        return this;
+    }
+
+    /**
+     * @return {@code True} if system cache.
+     */
+    public boolean isSystemCache() {
+        return sysCache;
+    }
+
+    /**
+     * @param sysCache System cache.
+     * @return {@code This} for chaining method calls.
+     */
+    public CacheInfo setSystemCache(boolean sysCache) {
+        this.sysCache = sysCache;
 
         return this;
     }

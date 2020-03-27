@@ -25,6 +25,7 @@ import java.util.StringTokenizer;
 import org.apache.ignite.IgniteCheckedException;
 import org.apache.ignite.configuration.ClientConnectorConfiguration;
 import org.apache.ignite.internal.processors.odbc.SqlStateCode;
+import org.apache.ignite.internal.processors.odbc.jdbc.JdbcThinFeature;
 import org.apache.ignite.internal.processors.query.NestedTxMode;
 import org.apache.ignite.internal.util.HostAndPortRange;
 import org.apache.ignite.internal.util.typedef.F;
@@ -129,9 +130,14 @@ public class ConnectionPropertiesImpl implements ConnectionProperties, Serializa
     private StringProperty sslProtocol = new StringProperty("sslProtocol",
         "SSL protocol name", null, null, false, null);
 
+    /** SSL: Supported SSL cipher suites. */
+    private StringProperty sslCipherSuites = new StringProperty("sslCipherSuites",
+        "Supported SSL ciphers", null,
+        null, false, null);
+
     /** SSL: Key algorithm name. */
     private StringProperty sslKeyAlgorithm = new StringProperty("sslKeyAlgorithm",
-        "SSL key algorithm name", "SunX509", null, false, null);
+        "SSL key algorithm name", null, null, false, null);
 
     /** SSL: Client certificate key store url. */
     private StringProperty sslClientCertificateKeyStoreUrl =
@@ -228,12 +234,31 @@ public class ConnectionPropertiesImpl implements ConnectionProperties, Serializa
             " Zero means there is no limits.",
         0L, false, 0, Integer.MAX_VALUE);
 
+    /** Disabled features. */
+    private StringProperty disabledFeatures = new StringProperty("disabledFeatures",
+        "Sets enumeration of features to force disable its.", null, null, false, new PropertyValidator() {
+        @Override public void validate(String val) throws SQLException {
+            if (val == null)
+                return;
+
+            String [] features = val.split("\\W+");
+
+            for (String f : features) {
+                try {
+                    JdbcThinFeature.valueOf(f.toUpperCase());
+                }
+                catch (IllegalArgumentException e) {
+                    throw new SQLException("Unknown feature: " + f);
+                }
+            }
+        }
+    });
 
     /** Properties array. */
     private final ConnectionProperty [] propsArray = {
         distributedJoins, enforceJoinOrder, collocated, replicatedOnly, autoCloseServerCursor,
         tcpNoDelay, lazy, socketSendBuffer, socketReceiveBuffer, skipReducerOnUpdate, nestedTxMode,
-        sslMode, sslProtocol, sslKeyAlgorithm,
+        sslMode, sslCipherSuites, sslProtocol, sslKeyAlgorithm,
         sslClientCertificateKeyStoreUrl, sslClientCertificateKeyStorePassword, sslClientCertificateKeyStoreType,
         sslTrustCertificateKeyStoreUrl, sslTrustCertificateKeyStorePassword, sslTrustCertificateKeyStoreType,
         sslTrustAll, sslFactory,
@@ -245,7 +270,8 @@ public class ConnectionPropertiesImpl implements ConnectionProperties, Serializa
         partitionAwarenessPartDistributionsCacheSize,
         qryMaxMemory,
         qryTimeout,
-        connTimeout
+        connTimeout,
+        disabledFeatures
     };
 
     /** {@inheritDoc} */
@@ -419,6 +445,16 @@ public class ConnectionPropertiesImpl implements ConnectionProperties, Serializa
     /** {@inheritDoc} */
     @Override public void setSslProtocol(String sslProtocol) {
         this.sslProtocol.setValue(sslProtocol);
+    }
+
+    /** {@inheritDoc} */
+    @Override public String getSslCipherSuites() {
+        return sslCipherSuites.value();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void setSslCipherSuites(String sslCipherSuites) {
+        this.sslCipherSuites.setValue(sslCipherSuites);
     }
 
     /** {@inheritDoc} */
@@ -610,7 +646,7 @@ public class ConnectionPropertiesImpl implements ConnectionProperties, Serializa
     }
 
     /** {@inheritDoc} */
-    @Override public void setQueryMaxMemory(@Nullable Integer timeout) throws SQLException {
+    @Override public void setQueryTimeout(@Nullable Integer timeout) throws SQLException {
         qryTimeout.setValue(timeout);
     }
 
@@ -622,6 +658,16 @@ public class ConnectionPropertiesImpl implements ConnectionProperties, Serializa
     /** {@inheritDoc} */
     @Override public void setConnectionTimeout(@Nullable Integer timeout) throws SQLException {
         connTimeout.setValue(timeout);
+    }
+
+    /** {@inheritDoc} */
+    @Override public String disabledFeatures() {
+        return disabledFeatures.value();
+    }
+
+    /** {@inheritDoc} */
+    @Override public void disabledFeatures(String features) {
+        disabledFeatures.setValue(features);
     }
 
     /**

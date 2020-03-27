@@ -30,7 +30,7 @@ import org.h2.value.ValueNull;
  * class instead.
  * </p>
  */
-class AggregateDataCollecting extends AggregateData implements Iterable<Value> {
+public class AggregateDataCollecting extends AggregateData implements Iterable<Value> {
 
     private final boolean distinct;
 
@@ -38,7 +38,8 @@ class AggregateDataCollecting extends AggregateData implements Iterable<Value> {
 
     private Value shared;
 
-    private long memReserved;
+    private H2MemoryTracker tracker;
+
 
     /**
      * Creates new instance of data for collecting aggregates.
@@ -47,6 +48,17 @@ class AggregateDataCollecting extends AggregateData implements Iterable<Value> {
      */
     AggregateDataCollecting(boolean distinct) {
         this.distinct = distinct;
+    }
+
+    /**
+     * @param distinct if distinct is used
+     * @param values Collected values.
+     * @param shared Shared value.
+     */
+    private AggregateDataCollecting(boolean distinct, Collection<Value> values, Value shared) {
+        this.distinct = distinct;
+        this.values = values;
+        this.shared = shared;
     }
 
     @Override
@@ -58,16 +70,32 @@ class AggregateDataCollecting extends AggregateData implements Iterable<Value> {
         if (c == null) {
             values = c = distinct ? new TreeSet<>(ses.getDatabase().getCompareMode()) : new ArrayList<Value>();
         }
-        H2MemoryTracker memTracker;
-        if (c.add(v) && (memTracker = ses.queryMemoryTracker()) != null) {
+
+        if (tracker == null && ses.memoryTracker() != null)
+            tracker = ses.memoryTracker().createChildTracker();
+
+        if (c.add(v) && tracker != null) {
             long size = distinct ? 40 /* TreeMap.Entry */ : Constants.MEMORY_POINTER;
 
             size += v.getMemory();
 
-            memTracker.reserve(size);
-
-            memReserved += size;
+            tracker.reserve(size);
         }
+    }
+
+    @Override
+    public void mergeAggregate(Session ses, AggregateData agg) {
+        assert agg != null;
+        assert agg instanceof AggregateDataCollecting : agg.getClass();
+
+        AggregateDataCollecting a = (AggregateDataCollecting)agg;
+        assert distinct == a.distinct;
+        assert shared == a.shared;
+
+        if (values == null)
+            values = a.values;
+        else if (a.values != null)
+            values.addAll(a.values);
     }
 
     @Override
@@ -121,17 +149,36 @@ class AggregateDataCollecting extends AggregateData implements Iterable<Value> {
      *
      * @return value of a shared argument
      */
-    Value getSharedArgument() {
+    public Value getSharedArgument() {
         return shared;
     }
 
     /** {@inheritDoc} */
     @Override public void cleanup(Session ses) {
-        H2MemoryTracker memTracker;
-        if (values != null && (memTracker = ses.queryMemoryTracker()) != null) {
+        if (values != null)
             values = null;
 
-            memTracker.release(memReserved);
-        }
+        if (tracker != null)
+            tracker.release(tracker.reserved());
+    }
+
+    /** */
+    @Override public long getMemory() {
+        return tracker.reserved();
+    }
+
+    /** */
+    public boolean isDistinct() {
+        return distinct;
+    }
+
+    /** */
+    public Collection<Value> values() {
+        return values;
+    }
+
+    /** */
+    public static AggregateDataCollecting from(boolean distinct, Collection<Value> values, Value shared) {
+        return new AggregateDataCollecting(distinct, values, shared);
     }
 }

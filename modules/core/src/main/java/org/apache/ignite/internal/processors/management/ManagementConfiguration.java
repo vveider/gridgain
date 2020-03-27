@@ -19,29 +19,33 @@ package org.apache.ignite.internal.processors.management;
 import java.io.IOException;
 import java.io.ObjectInput;
 import java.io.ObjectOutput;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.apache.ignite.internal.IgniteProperties;
 import org.apache.ignite.internal.dto.IgniteDataTransferObject;
 import org.apache.ignite.internal.util.tostring.GridToStringExclude;
+import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
 
+import static java.util.Arrays.asList;
+
 /**
- * This class defines Management Console Agent configuration.
+ * This class defines Control Center agent configuration.
  */
 public class ManagementConfiguration extends IgniteDataTransferObject {
     /** */
     private static final long serialVersionUID = 0L;
 
     /** Default console URI. */
-    private static final String DFLT_CONSOLE_URI = "http://localhost:3000";
+    private static final String DFLT_CONSOLE_URIS = F.isEmpty(IgniteProperties.get("ignite.control.center.uris"))
+        ? "http://localhost:3000" : IgniteProperties.get("ignite.control.center.uris");
+
+    /** */
+    private List<String> consoleUris = asList(DFLT_CONSOLE_URIS.split(","));
 
     /** */
     private boolean enabled = true;
-
-    /** */
-    private List<String> consoleUris = Collections.singletonList(DFLT_CONSOLE_URI);
 
     /** */
     @GridToStringExclude
@@ -86,86 +90,86 @@ public class ManagementConfiguration extends IgniteDataTransferObject {
     }
 
     /**
-     * @return Server URI.
+     * @return Control Center URI.
      */
     public List<String> getConsoleUris() {
         return consoleUris;
     }
 
     /**
-     * @param srvUri URI.
+     * @param consoleUris URI.
      * @return {@code this} for chaining.
      */
-    public ManagementConfiguration setConsoleUris(List<String> srvUri) {
-        this.consoleUris = srvUri;
+    public ManagementConfiguration setConsoleUris(List<String> consoleUris) {
+        this.consoleUris = consoleUris;
 
         return this;
     }
 
     /**
-     * @return Server key store.
+     * @return Control Center key store.
      */
     public String getConsoleKeyStore() {
         return consoleKeyStore;
     }
 
     /**
-     * @param srvKeyStore Server key store.
+     * @param consoleKeyStore Control Center key store.
      * @return {@code this} for chaining.
      */
-    public ManagementConfiguration setConsoleKeyStore(String srvKeyStore) {
-        this.consoleKeyStore = srvKeyStore;
+    public ManagementConfiguration setConsoleKeyStore(String consoleKeyStore) {
+        this.consoleKeyStore = consoleKeyStore;
 
         return this;
     }
 
     /**
-     * @return Server key store password.
+     * @return Control Center key store password.
      */
     public String getConsoleKeyStorePassword() {
         return consoleKeyStorePass;
     }
 
     /**
-     * @param srvKeyStorePass Server key store password.
+     * @param consoleKeyStorePass Control Center key store password.
      * @return {@code this} for chaining.
      */
-    public ManagementConfiguration setConsoleKeyStorePassword(String srvKeyStorePass) {
-        this.consoleKeyStorePass = srvKeyStorePass;
+    public ManagementConfiguration setConsoleKeyStorePassword(String consoleKeyStorePass) {
+        this.consoleKeyStorePass = consoleKeyStorePass;
 
         return this;
     }
 
     /**
-     * @return Server trust store.
+     * @return Control Center trust store.
      */
     public String getConsoleTrustStore() {
         return consoleTrustStore;
     }
 
     /**
-     * @param srvTrustStore Path to server trust store.
+     * @param consoleTrustStore Path to Control Center trust store.
      * @return {@code this} for chaining.
      */
-    public ManagementConfiguration setConsoleTrustStore(String srvTrustStore) {
-        this.consoleTrustStore = srvTrustStore;
+    public ManagementConfiguration setConsoleTrustStore(String consoleTrustStore) {
+        this.consoleTrustStore = consoleTrustStore;
 
         return this;
     }
 
     /**
-     * @return Server trust store password.
+     * @return Control Center trust store password.
      */
     public String getConsoleTrustStorePassword() {
         return consoleTrustStorePass;
     }
 
     /**
-     * @param srvTrustStorePass Server trust store password.
+     * @param consoleTrustStorePass Console trust store password.
      * @return {@code this} for chaining.
      */
-    public ManagementConfiguration setConsoleTrustStorePassword(String srvTrustStorePass) {
-        this.consoleTrustStorePass = srvTrustStorePass;
+    public ManagementConfiguration setConsoleTrustStorePassword(String consoleTrustStorePass) {
+        this.consoleTrustStorePass = consoleTrustStorePass;
 
         return this;
     }
@@ -195,10 +199,11 @@ public class ManagementConfiguration extends IgniteDataTransferObject {
     }
 
     /**
-     * @param sesTimeout Session timeout in milliseconds.
+     * @param securitySesTimeout Session timeout in milliseconds.
      */
-    public ManagementConfiguration setSecuritySessionTimeout(long sesTimeout) {
-        this.securitySesTimeout = sesTimeout;
+    public ManagementConfiguration setSecuritySessionTimeout(long securitySesTimeout) {
+        this.securitySesTimeout = securitySesTimeout;
+
         return this;
     }
 
@@ -210,10 +215,11 @@ public class ManagementConfiguration extends IgniteDataTransferObject {
     }
 
     /**
-     * @param sesExpirationTimeout Session expiration timeout.
+     * @param securitySesExpirationTimeout Session expiration timeout.
      */
-    public ManagementConfiguration setSecuritySessionExpirationTimeout(long sesExpirationTimeout) {
-        this.securitySesExpirationTimeout = sesExpirationTimeout;
+    public ManagementConfiguration setSecuritySessionExpirationTimeout(long securitySesExpirationTimeout) {
+        this.securitySesExpirationTimeout = securitySesExpirationTimeout;
+
         return this;
     }
 
@@ -226,7 +232,7 @@ public class ManagementConfiguration extends IgniteDataTransferObject {
             return false;
 
         ManagementConfiguration that = (ManagementConfiguration)o;
-        
+
         return enabled == that.enabled &&
             Objects.equals(consoleUris, that.consoleUris) &&
             Objects.equals(consoleKeyStore, that.consoleKeyStore) &&

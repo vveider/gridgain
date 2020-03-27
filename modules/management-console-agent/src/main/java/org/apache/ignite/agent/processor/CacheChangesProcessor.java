@@ -18,6 +18,7 @@ package org.apache.ignite.agent.processor;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -104,7 +105,7 @@ public class CacheChangesProcessor extends GridProcessorAdapter {
     }
 
     /**
-     * Send caches information to Management Console.
+     * Send caches information to Control Center.
      */
     private void sendCacheInfo() {
         if (!ctx.isStopping() && mgr.connected()) {
@@ -126,10 +127,10 @@ public class CacheChangesProcessor extends GridProcessorAdapter {
     private Collection<CacheSqlMetadata> getCacheSqlMetadata() {
         GridCacheProcessor cacheProc = ctx.cache();
 
-        List<CacheSqlMetadata> cachesMetadata = new ArrayList<>();
+        Collection<CacheSqlMetadata> cachesMetadata = new HashSet<>();
 
         for (Map.Entry<String, DynamicCacheDescriptor> item : cacheProc.cacheDescriptors().entrySet()) {
-            if (item.getValue().sql()) {
+            if (!item.getValue().schema().entities().isEmpty() && !isSystemCache(item.getKey())) {
                 String cacheName = item.getKey();
 
                 Collection<GridQueryTypeDescriptor> types = ctx.query().types(cacheName);
@@ -155,14 +156,14 @@ public class CacheChangesProcessor extends GridProcessorAdapter {
         for (Map.Entry<String, DynamicCacheDescriptor> item : cacheDescriptors.entrySet()) {
             DynamicCacheDescriptor cd = item.getValue();
 
-            if (!isSystemCache(item.getKey())) {
-                cachesInfo.add(
-                    new CacheInfo()
-                        .setName(item.getKey())
-                        .setDeploymentId(cd.deploymentId())
-                        .setGroup(cd.groupDescriptor().groupName())
-                );
-            }
+            cachesInfo.add(
+                new CacheInfo()
+                    .setCacheName(item.getKey())
+                    .setCacheId(cd.cacheId())
+                    .setCreatedBySql(item.getValue().sql())
+                    .setSystemCache(isSystemCache(item.getKey()))
+                    .setCacheGroup(cd.groupDescriptor().groupName())
+            );
         }
 
         return cachesInfo;

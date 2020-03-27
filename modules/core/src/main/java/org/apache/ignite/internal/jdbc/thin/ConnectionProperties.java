@@ -17,6 +17,7 @@
 package org.apache.ignite.internal.jdbc.thin;
 
 import java.sql.SQLException;
+import org.apache.ignite.internal.processors.odbc.jdbc.JdbcThinFeature;
 import org.apache.ignite.internal.util.HostAndPortRange;
 import org.jetbrains.annotations.Nullable;
 
@@ -210,6 +211,22 @@ public interface ConnectionProperties {
      * @param sslProtocol SSL protocol name.
      */
     public void setSslProtocol(String sslProtocol);
+
+    /**
+     * Gets cipher suites.
+     *
+     * @return SSL cipher suites.
+     */
+    public String getSslCipherSuites();
+
+    /**
+     * Override default cipher suites.
+     *
+     * <p>See more at JSSE Reference Guide.
+     *
+     * @param sslCipherSuites SSL cipher suites.
+     */
+     public void setSslCipherSuites(String sslCipherSuites);
 
     /**
      * Gets algorithm that will be used to create a key manager.
@@ -487,7 +504,7 @@ public interface ConnectionProperties {
      *
      * @param qryTimeout Query timeout in seconds.
      */
-    public void setQueryMaxMemory(@Nullable Integer qryTimeout) throws SQLException;
+    public void setQueryTimeout(@Nullable Integer qryTimeout) throws SQLException;
 
     /**
      * Note: zero value means there is no limits.
@@ -502,4 +519,19 @@ public interface ConnectionProperties {
      * @param connTimeout Connection timeout in milliseconds.
      */
     public void setConnectionTimeout(@Nullable Integer connTimeout) throws SQLException;
+
+    /**
+     * Any JDBC features could be force disabled.
+     * See {@link JdbcThinFeature}.
+     * The string should contain enumeration of feature names, separated by the comma.
+     *
+     * @return disabled features.
+     */
+    public String disabledFeatures();
+
+    /**
+     * @param features Disabled features. See {@link JdbcThinFeature}.
+     *      The string should contain enumeration of feature names, separated by the comma.
+     */
+    public void disabledFeatures(String features);
 }

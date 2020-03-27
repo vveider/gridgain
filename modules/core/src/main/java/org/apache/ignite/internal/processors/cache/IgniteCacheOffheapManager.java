@@ -1060,9 +1060,14 @@ public interface IgniteCacheOffheapManager {
         public void preload() throws IgniteCheckedException;
 
         /**
-         * Reset counters for partition.
+         * Reset counter for partition.
          */
         public void resetUpdateCounter();
+
+        /**
+         * Reset the initial value of the partition counter.
+         */
+        void resetInitialUpdateCounter();
 
         /**
          * Partition storage.

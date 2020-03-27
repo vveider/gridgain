@@ -72,7 +72,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
     @Test
     public void testMetricsOnRemoteMapFail() throws Exception {
         int strongMemQuota = 1024 * 1024;
-        int memQuotaUnlimited = -1;
+        int memQuotaUnlimited = 0;
 
         startGridWithMaxMem(MAPPER_IDX, strongMemQuota);
         startGridWithMaxMem(REDUCER_IDX, memQuotaUnlimited, true);
@@ -84,7 +84,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
         // map phase failure affects only general fail metric, not OOM metric.
         assertMetricsIncrementedOnlyOnReducer(() -> GridTestUtils.assertThrows(
             log,
-            () -> cache.query(new SqlFieldsQuery("SELECT * FROM TAB")).getAll(),
+            () -> cache.query(new SqlFieldsQuery("SELECT * FROM TAB").setLazy(false)).getAll(),
             CacheException.class,
             mapFailMsg),
             "failed");
@@ -120,7 +120,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
     @Test
     public void testMetricsOnLocalMapFail() throws Exception {
         int strongMemQuota = 1024 * 1024;
-        int memQuotaUnlimited = -1;
+        int memQuotaUnlimited = 0;
 
         startGridWithMaxMem(REDUCER_IDX, strongMemQuota);
         startGridWithMaxMem(MAPPER_IDX, memQuotaUnlimited, true);
@@ -132,7 +132,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
         // map phase failure affects only general fail metric, not OOM metric.
         assertMetricsIncrementedOnlyOnReducer(() -> GridTestUtils.assertThrows(
             log,
-            () -> cache.query(new SqlFieldsQuery("SELECT * FROM TAB")).getAll(),
+            () -> cache.query(new SqlFieldsQuery("SELECT * FROM TAB").setLazy(false)).getAll(),
             CacheException.class,
             mapFailMsg),
             "failed");
@@ -167,7 +167,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
     @Test
     public void testMetricsOnRemoteReduceStepFail() throws Exception {
         int strongMemQuota = 1024 * 1024;
-        int memQuotaUnlimited = -1;
+        int memQuotaUnlimited = 0;
 
         startGridWithMaxMem(MAPPER_IDX, memQuotaUnlimited);
 
@@ -207,7 +207,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
     @Test
     public void testLocalSelectFailedByOOM() throws Exception {
         int strongMemQuota = 1024 * 1024;
-        int memQuotaUnlimited = -1;
+        int memQuotaUnlimited = 0;
 
         startGridWithMaxMem(REDUCER_IDX, strongMemQuota);
         startGridWithMaxMem(MAPPER_IDX, memQuotaUnlimited, true);
@@ -216,7 +216,7 @@ public class SqlStatisticsUserQueriesLongTest extends UserQueriesTestBase {
 
         assertMetricsIncrementedOnlyOnReducer(() -> GridTestUtils.assertThrows(
             log,
-            () -> cache.query(new SqlFieldsQuery("SELECT * FROM TAB").setLocal(true)).getAll(),
+            () -> cache.query(new SqlFieldsQuery("SELECT * FROM TAB").setLocal(true).setLazy(false)).getAll(),
             CacheException.class,
             null),
             "failed", "failedByOOM");

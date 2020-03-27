@@ -25,6 +25,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -99,7 +100,7 @@ import static org.apache.ignite.cache.CacheWriteSynchronizationMode.FULL_SYNC;
 import static org.apache.ignite.internal.util.IgniteUtils.resolveIgnitePath;
 
 /**
- * Test KILL QUERY requested from the same node where quere was executed.
+ * Test KILL QUERY requested from the same node where query was executed.
  */
 @SuppressWarnings({"ThrowableNotThrown", "AssertWithSideEffects"})
 @RunWith(Parameterized.class)
@@ -632,6 +633,120 @@ public class KillQueryTest extends GridCommonAbstractTest {
     }
 
     /**
+     *
+     */
+    @Test
+    public void testCancelBeforeIteratorObtained() throws Exception {
+        FieldsQueryCursor<List<?>>  cur = ignite.context().query()
+            .querySqlFields(new SqlFieldsQuery("select * from \"default\".Integer").setLazy(false), false);
+
+        Long qryId = ignite.context().query().runningQueries(-1).iterator().next().id();
+
+        igniteForKillRequest.context().query()
+            .querySqlFields(createKillQuery(ignite.context().localNodeId(), qryId, asyncCancel), false).getAll();
+
+        if (asyncCancel)
+            GridTestUtils.waitForCondition(() -> ignite.context().query().runningQueries(-1).isEmpty(), 1000);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testCancelAfterIteratorObtained() throws Exception {
+        FieldsQueryCursor<List<?>> cur = ignite.context().query()
+            .querySqlFields(new SqlFieldsQuery("select * from \"default\".Integer").setLazy(false), false);
+
+        cur.iterator();
+
+        Long qryId = ignite.context().query().runningQueries(-1).iterator().next().id();
+
+        igniteForKillRequest.context().query()
+            .querySqlFields(createKillQuery(ignite.context().localNodeId(), qryId, asyncCancel), false).getAll();
+
+        if (asyncCancel)
+            GridTestUtils.waitForCondition(() -> ignite.context().query().runningQueries(-1).isEmpty(), 1000);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testCancelAfterResultSetPartiallyRead() throws Exception {
+        FieldsQueryCursor<List<?>> cur = ignite.context().query()
+            .querySqlFields(new SqlFieldsQuery("select * from \"default\".Integer").setLazy(false), false);
+
+        Iterator<List<?>> it = cur.iterator();
+
+        it.next();
+
+        Long qryId = ignite.context().query().runningQueries(-1).iterator().next().id();
+
+        igniteForKillRequest.context().query()
+            .querySqlFields(createKillQuery(ignite.context().localNodeId(), qryId, asyncCancel), false).getAll();
+
+        if (asyncCancel)
+            GridTestUtils.waitForCondition(() -> ignite.context().query().runningQueries(-1).isEmpty(), 1000);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testCancelBeforeIteratorObtainedLazy() throws Exception {
+        FieldsQueryCursor<List<?>>  cur = ignite.context().query()
+            .querySqlFields(new SqlFieldsQuery("select * from \"default\".Integer").setLazy(true), false);
+
+        Long qryId = ignite.context().query().runningQueries(-1).iterator().next().id();
+
+        igniteForKillRequest.context().query()
+            .querySqlFields(createKillQuery(ignite.context().localNodeId(), qryId, asyncCancel), false).getAll();
+
+        if (asyncCancel)
+            GridTestUtils.waitForCondition(() -> ignite.context().query().runningQueries(-1).isEmpty(), 1000);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testCancelAfterIteratorObtainedLazy() throws Exception {
+        FieldsQueryCursor<List<?>> cur = ignite.context().query()
+            .querySqlFields(new SqlFieldsQuery("select * from \"default\".Integer").setLazy(true), false);
+
+        cur.iterator();
+
+        Long qryId = ignite.context().query().runningQueries(-1).iterator().next().id();
+
+        igniteForKillRequest.context().query()
+            .querySqlFields(createKillQuery(ignite.context().localNodeId(), qryId, asyncCancel), false).getAll();
+
+        if (asyncCancel)
+            GridTestUtils.waitForCondition(() -> ignite.context().query().runningQueries(-1).isEmpty(), 1000);
+    }
+
+    /**
+     *
+     */
+    @Test
+    public void testCancelAfterResultSetPartiallyReadLazy() throws Exception {
+        FieldsQueryCursor<List<?>> cur = ignite.context().query()
+            .querySqlFields(new SqlFieldsQuery("select * from \"default\".Integer").setLazy(true), false);
+
+        Iterator<List<?>> it = cur.iterator();
+
+        it.next();
+
+        Long qryId = ignite.context().query().runningQueries(-1).iterator().next().id();
+
+        igniteForKillRequest.context().query()
+            .querySqlFields(createKillQuery(ignite.context().localNodeId(), qryId, asyncCancel), false).getAll();
+
+        if (asyncCancel)
+            GridTestUtils.waitForCondition(() -> ignite.context().query().runningQueries(-1).isEmpty(), 1000);
+    }
+
+    /**
      * Trying to cancel long running query if partition pruning does it job. It's important to set {@link
      * IgniteSystemProperties#IGNITE_SQL_MAX_EXTRACTED_PARTS_FROM_BETWEEN} bigger than partitions count {@link
      * #PARTS_CNT}
@@ -662,15 +777,15 @@ public class KillQueryTest extends GridCommonAbstractTest {
     public void testCancelLocalQueryNative() throws Exception {
         IgniteInternalFuture cancelRes = cancel(1, asyncCancel);
 
-        GridTestUtils.assertThrows(log, () -> {
+        GridTestUtils.assertThrowsAnyCause(log, () -> {
             ignite.cache(DEFAULT_CACHE_NAME).query(
                 new SqlFieldsQuery("select * from Integer where _key in " +
-                    "(select _key from Integer where awaitLatchCancelled() = 0) and shouldNotBeCalledInCaseOfCancellation()")
+                    "(select _key from Integer where awaitLatchCancelled() = 0) and shouldNotBeCalledMoreThan(128)")
                     .setLocal(true)
             ).getAll();
 
             return null;
-        }, CacheException.class, "The query was cancelled while executing.");
+        }, QueryCancelledException.class, "The query was cancelled while executing.");
 
         // Ensures that there were no exceptions within async cancellation process.
         cancelRes.get(CHECK_RESULT_TIMEOUT);
@@ -717,7 +832,7 @@ public class KillQueryTest extends GridCommonAbstractTest {
 
             assert rs.next();
 
-            IgniteInternalFuture cancelRes = cancel(3, asyncCancel, sql);
+            IgniteInternalFuture cancelRes = cancel(3, asyncCancel, sql, "select 100 from Integer");
 
             GridTestUtils.assertThrows(log, () -> {
                 // Executes multiple long running query
@@ -831,7 +946,6 @@ public class KillQueryTest extends GridCommonAbstractTest {
 
             Assert.fail("Failed to wait for query to be in running queries list exactly one time " +
                 "[select=" + select + ", node=" + ignite.localNode().id() + ", timeout=" + TIMEOUT + "ms].");
-
         }
 
         SqlFieldsQuery killQry = createKillQuery(findOneRunningQuery(select, ignite), asyncCancel);
@@ -1319,11 +1433,11 @@ public class KillQueryTest extends GridCommonAbstractTest {
 
             setMapper(new ReducePartitionMapper(ctx, ctx.log(GridReduceQueryExecutor.class)) {
                 @Override public ReducePartitionMapResult nodesForPartitions(List<Integer> cacheIds,
-                    AffinityTopologyVersion topVer, int[] parts, boolean isReplicatedOnly, long qryId) {
+                    AffinityTopologyVersion topVer, int[] parts, boolean isReplicatedOnly) {
                     if (retryNodePartMapping)
                         return RETRY_RESULT;
                     else
-                        return super.nodesForPartitions(cacheIds, topVer, parts, isReplicatedOnly, qryId);
+                        return super.nodesForPartitions(cacheIds, topVer, parts, isReplicatedOnly);
                 }
             });
 

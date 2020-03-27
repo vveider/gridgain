@@ -48,9 +48,10 @@ import org.apache.ignite.internal.processors.datastreamer.DataStreamProcessor;
 import org.apache.ignite.internal.processors.datastructures.DataStructuresProcessor;
 import org.apache.ignite.internal.processors.diagnostic.DiagnosticProcessor;
 import org.apache.ignite.internal.processors.failure.FailureProcessor;
-import org.apache.ignite.internal.processors.management.ManagementConsoleProcessorAdapter;
+import org.apache.ignite.internal.processors.localtask.DurableBackgroundTasksProcessor;
 import org.apache.ignite.internal.processors.job.GridJobProcessor;
 import org.apache.ignite.internal.processors.jobmetrics.GridJobMetricsProcessor;
+import org.apache.ignite.internal.processors.management.ManagementConsoleProcessor;
 import org.apache.ignite.internal.processors.marshaller.GridMarshallerMappingProcessor;
 import org.apache.ignite.internal.processors.metastorage.DistributedMetaStorage;
 import org.apache.ignite.internal.processors.metric.GridMetricManager;
@@ -742,7 +743,19 @@ public interface GridKernalContext extends Iterable<GridComponent> {
     public RollingUpgradeProcessor rollingUpgrade();
 
     /**
-     * @return Management console processor.
+     * @return Control Center processor.
      */
-    public ManagementConsoleProcessorAdapter managementConsole();
+    public ManagementConsoleProcessor managementConsole();
+
+    /**
+     * @return Local continuous tasks processor.
+     */
+    public DurableBackgroundTasksProcessor durableBackgroundTasksProcessor();
+
+    /**
+     * Return Thread pool for create/rebuild indexes.
+     *
+     * @return Thread pool for create/rebuild indexes.
+     */
+    public ExecutorService buildIndexExecutorService();
 }
