@@ -158,7 +158,6 @@ import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryRequiredFeatureS
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryRingLatencyCheckMessage;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryServerOnlyCustomEventMessage;
 import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryStatusCheckMessage;
-import org.apache.ignite.spi.discovery.tcp.messages.TcpDiscoveryTopPriorityClientMessage;
 import org.apache.ignite.thread.IgniteThreadPoolExecutor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -1523,9 +1522,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                 // E.g. due to class not found issue.
                 joinReqSent = msg instanceof TcpDiscoveryJoinRequestMessage;
 
-                if (msg instanceof TcpDiscoveryTopPriorityClientMessage)
-                    return -1;
-
                 int receipt = spi.readReceipt(sock, timeoutHelper.nextTimeoutChunk(ackTimeout0));
 
                 spi.stats.onMessageSent(msg, U.nanosToMillis(tsNanos0 - tsNanos));
@@ -2250,14 +2246,6 @@ class ServerImpl extends TcpDiscoveryImpl {
             return locNode;
 
         return ring.node(nodeId);
-    }
-
-    public void sendTopPriorityClientMessage(UUID nodeId, Serializable payload) {
-        log.info("<!> ServerImpl sending top priority message to " + nodeId + ": " + payload);
-        TcpDiscoveryNode clientNode = ring.node(nodeId);
-
-        if (clientNode != null)
-            msgWorker.trySendMessageDirectly(clientNode, new TcpDiscoveryTopPriorityClientMessage(getLocalNodeId(), payload, nodeId));
     }
 
     /**
@@ -7385,18 +7373,6 @@ class ServerImpl extends TcpDiscoveryImpl {
                                 log.info("Latency check message has been read: " + msg.id());
 
                             ((TcpDiscoveryRingLatencyCheckMessage)msg).onRead();
-                        }
-                        else if (msg instanceof TcpDiscoveryTopPriorityClientMessage) {
-                            log.info("<!> ServerImpl redirecting top priority message: " + msg);
-
-                            TcpDiscoveryTopPriorityClientMessage clientMsg = (TcpDiscoveryTopPriorityClientMessage)msg;
-
-                            TcpDiscoveryNode clientNode = ring.node(clientMsg.clientNodeId());
-
-                            if (clientNode != null)
-                                msgWorker.trySendMessageDirectly(clientNode, msg);
-
-                            continue;
                         }
 
                         TcpDiscoveryClientMetricsUpdateMessage metricsUpdateMsg = null;
