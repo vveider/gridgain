@@ -49,7 +49,7 @@ import org.jetbrains.annotations.Nullable;
 public class IdleVerifyUtility {
     /** Cluster not idle message. */
     public static final String IDLE_DATA_ALTERATION_MSG =
-        "Cluster not idle. Data alteration found in caches or groups: ";
+        "Cluster not idle. Modifications found in caches or groups: ";
 
     /**
      * See {@link IdleVerifyUtility#checkPartitionsPageCrcSum(FilePageStore, CacheGroupContext, int, byte)}.

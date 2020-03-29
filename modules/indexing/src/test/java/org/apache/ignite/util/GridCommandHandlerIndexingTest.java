@@ -136,14 +136,14 @@ public class GridCommandHandlerIndexingTest extends GridCommandHandlerClusterPer
 
         int cntPreload = 100;
 
-        createCacheAndPreload(ig, cntPreload);
+        createCacheAndPreload(ig, cntPreload, 8);
 
         GridCacheDatabaseSharedManager db = null;
 
         if (persistenceEnable()) {
             forceCheckpoint();
 
-            db = (GridCacheDatabaseSharedManager) ig.context().cache().context().database();
+            db = (GridCacheDatabaseSharedManager)ig.context().cache().context().database();
             db.enableCheckpoints(false).get();
         }
 

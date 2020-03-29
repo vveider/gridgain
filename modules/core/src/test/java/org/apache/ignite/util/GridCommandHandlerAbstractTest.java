@@ -363,17 +363,28 @@ public abstract class GridCommandHandlerAbstractTest extends GridCommonAbstractT
      *
      * @param ignite Ignite.
      * @param countEntries Count of entries.
+     * @param partitions Partitions count.
      */
-    protected void createCacheAndPreload(Ignite ignite, int countEntries) {
+    protected void createCacheAndPreload(Ignite ignite, int countEntries, int partitions) {
         assert nonNull(ignite);
 
         ignite.createCache(new CacheConfiguration<>(DEFAULT_CACHE_NAME)
-            .setAffinity(new RendezvousAffinityFunction(false, 32))
+            .setAffinity(new RendezvousAffinityFunction(false, partitions))
             .setBackups(1));
 
         try (IgniteDataStreamer streamer = ignite.dataStreamer(DEFAULT_CACHE_NAME)) {
             for (int i = 0; i < countEntries; i++)
                 streamer.addData(i, i);
         }
+    }
+
+    /**
+     * Creates default cache and preload some data entries.
+     *
+     * @param ignite Ignite.
+     * @param countEntries Count of entries.
+     */
+    protected void createCacheAndPreload(Ignite ignite, int countEntries) {
+        createCacheAndPreload(ignite, countEntries, 32);
     }
 }
