@@ -83,13 +83,13 @@ class TcpClientTransactions implements ClientTransactions {
         TcpClientTransaction tx0 = tx();
 
         if (tx0 != null)
-            throw new ClientException("A transaction has already started by the current thread.");
+            throw new ClientException("A transaction has already been started by the current thread.");
 
         tx0 = ch.service(ClientOperation.TX_START,
             req -> {
                 ProtocolContext protocolContext = req.clientChannel().protocolContext();
-                if (protocolContext.isTransactionsSupported()) {
-                    throw new ClientProtocolError(String.format("Transactions have not supported by the server's " +
+                if (!protocolContext.isTransactionsSupported()) {
+                    throw new ClientProtocolError(String.format("Transactions are not supported by the server's " +
                         "protocol version %s, required version %s", protocolContext.version(), V1_5_0));
                 }
 
