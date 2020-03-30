@@ -65,11 +65,14 @@ namespace ignite
                 /** Version 1.4.0. Added: Partition Awareness support, IEP-23. */
                 static const ProtocolVersion VERSION_1_4_0;
 
-                /** Version 1.5.0. Expiration Policy Configuration. */
+                /** Version 1.5.0. Transaction support. */
                 static const ProtocolVersion VERSION_1_5_0;
 
-                /** Version 1.6.0. Features introduced. */
+                /** Version 1.6.0. Expiration Policy Configuration. */
                 static const ProtocolVersion VERSION_1_6_0;
+
+                /** Version 1.6.0. Features introduced. */
+                static const ProtocolVersion VERSION_1_7_0;
 
                 /** Current version. */
                 static const ProtocolVersion VERSION_DEFAULT;

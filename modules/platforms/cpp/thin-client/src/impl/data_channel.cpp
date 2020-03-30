@@ -34,9 +34,11 @@ namespace ignite
             const ProtocolVersion DataChannel::VERSION_1_4_0(1, 4, 0);
             const ProtocolVersion DataChannel::VERSION_1_5_0(1, 5, 0);
             const ProtocolVersion DataChannel::VERSION_1_6_0(1, 6, 0);
-            const ProtocolVersion DataChannel::VERSION_DEFAULT(VERSION_1_6_0);
+            const ProtocolVersion DataChannel::VERSION_1_7_0(1, 7, 0);
+            const ProtocolVersion DataChannel::VERSION_DEFAULT(VERSION_1_7_0);
 
             DataChannel::VersionSet::value_type supportedArray[] = {
+                DataChannel::VERSION_1_7_0,
                 DataChannel::VERSION_1_6_0,
                 DataChannel::VERSION_1_5_0,
                 DataChannel::VERSION_1_4_0,
@@ -289,7 +291,7 @@ namespace ignite
 
                 writer.WriteInt8(ClientType::THIN_CLIENT);
 
-                if (propVer >= VERSION_1_6_0)
+                if (propVer >= VERSION_1_7_0)
                 {
                     // Use features for any new changes in protocol.
                     int8_t features[] = { 0 };
@@ -336,7 +338,7 @@ namespace ignite
                     return false;
                 }
 
-                if (propVer >= VERSION_1_6_0)
+                if (propVer >= VERSION_1_7_0)
                 {
                     int32_t len = reader.ReadInt8Array(0, 0);
                     std::vector<int8_t> features;

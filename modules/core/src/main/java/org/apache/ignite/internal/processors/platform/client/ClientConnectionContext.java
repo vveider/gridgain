@@ -64,10 +64,10 @@ public class ClientConnectionContext extends ClientListenerAbstractConnectionCon
     public static final ClientListenerProtocolVersion VER_1_6_0 = ClientListenerProtocolVersion.create(1, 6, 0);
 
     /**
-     * Version 1.6.0. Added: protocol features.
+     * Version 1.7.0. Added: protocol features.
      * ATTENTION! Do not add any new protocol versions unless totally necessary. Use {@link ClientFeature} instead.
      */
-    public static final ClientListenerProtocolVersion VER_1_7_0 = ClientListenerProtocolVersion.create(1, 6, 0);
+    public static final ClientListenerProtocolVersion VER_1_7_0 = ClientListenerProtocolVersion.create(1, 7, 0);
 
     /** Default version. */
     public static final ClientListenerProtocolVersion DEFAULT_VER = VER_1_7_0;
@@ -169,7 +169,7 @@ public class ClientConnectionContext extends ClientListenerAbstractConnectionCon
 
         EnumSet<ClientFeature> features = null;
 
-        if (ver.compareTo(VER_1_6_0) >= 0) {
+        if (ver.compareTo(VER_1_7_0) >= 0) {
             byte [] cliFeatures = reader.readByteArray();
 
             features = ClientFeature.enumSet(cliFeatures);
