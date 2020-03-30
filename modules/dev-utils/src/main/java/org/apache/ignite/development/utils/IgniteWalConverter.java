@@ -143,27 +143,32 @@ public class IgniteWalConverter {
 
         try (WALIterator stIt = factory.iterator(iteratorParametersBuilder)) {
             String currentWalPath = null;
-            while (stIt.hasNextX()) {
-                final String currentRecordWalPath = getCurrentWalFilePath(stIt);
-                if (currentWalPath == null || !currentWalPath.equals(currentRecordWalPath)) {
-                    out.println("File: " + currentRecordWalPath);
-                    currentWalPath = currentRecordWalPath;
+            try {
+                while (stIt.hasNextX()) {
+                    final String currentRecordWalPath = getCurrentWalFilePath(stIt);
+                    if (currentWalPath == null || !currentWalPath.equals(currentRecordWalPath)) {
+                        out.println("File: " + currentRecordWalPath);
+                        currentWalPath = currentRecordWalPath;
+                    }
+
+                    try {
+                        IgniteBiTuple<WALPointer, WALRecord> next = stIt.nextX();
+
+                        final WALPointer pointer = next.get1();
+                        final WALRecord record = next.get2();
+
+                        if (stat != null)
+                            stat.registerRecord(record, pointer, true);
+
+                        out.println(record);
+                    }
+                    catch (Exception e) {
+                        e.printStackTrace(out);
+                    }
                 }
-
-                try {
-                    IgniteBiTuple<WALPointer, WALRecord> next = stIt.nextX();
-
-                    final WALPointer pointer = next.get1();
-                    final WALRecord record = next.get2();
-
-                    if (stat != null)
-                        stat.registerRecord(record, pointer, true);
-
-                    out.println(record);
-                }
-                catch (Exception e) {
-                    e.printStackTrace(out);
-                }
+            }
+            catch (Exception e) {
+                e.printStackTrace(out);
             }
         }
 
