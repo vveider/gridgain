@@ -143,7 +143,7 @@ class TcpClientCache<K, V> implements ClientCache<K, V> {
             this::writeCacheInfo,
             res -> {
                 try {
-                    return serDes.cacheConfiguration(res.in(), res.clientChannel().serverVersion());
+                    return serDes.cacheConfiguration(res.in(), res.clientChannel().protocolContext());
                 }
                 catch (IOException e) {
                     return null;

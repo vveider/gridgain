@@ -33,7 +33,9 @@ import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
@@ -61,6 +63,7 @@ import org.apache.ignite.client.SslMode;
 import org.apache.ignite.client.SslProtocol;
 import org.apache.ignite.configuration.ClientConfiguration;
 import org.apache.ignite.internal.IgniteFutureTimeoutCheckedException;
+import org.apache.ignite.internal.ThinProtocolFeature;
 import org.apache.ignite.internal.binary.BinaryPrimitives;
 import org.apache.ignite.internal.binary.BinaryRawWriterEx;
 import org.apache.ignite.internal.binary.BinaryReaderExImpl;
@@ -72,13 +75,17 @@ import org.apache.ignite.internal.binary.streams.BinaryOutputStream;
 import org.apache.ignite.internal.processors.platform.client.ClientFlag;
 import org.apache.ignite.internal.processors.platform.client.ClientStatus;
 import org.apache.ignite.internal.util.future.GridFutureAdapter;
+import org.apache.ignite.internal.util.typedef.F;
 import org.jetbrains.annotations.Nullable;
 
 import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_0_0;
 import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_1_0;
 import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_2_0;
+import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_3_0;
 import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_4_0;
 import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_5_0;
+import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_6_0;
+import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_7_0;
 import static org.apache.ignite.ssl.SslContextFactory.DFLT_KEY_ALGORITHM;
 import static org.apache.ignite.ssl.SslContextFactory.DFLT_STORE_TYPE;
 
@@ -86,10 +93,16 @@ import static org.apache.ignite.ssl.SslContextFactory.DFLT_STORE_TYPE;
  * Implements {@link ClientChannel} over TCP.
  */
 class TcpClientChannel implements ClientChannel {
+    /** Protocol version used by default on first connection attempt. */
+    private static final ProtocolVersion DEFAULT_VERSION = V1_7_0;
+
     /** Supported protocol versions. */
     private static final Collection<ProtocolVersion> supportedVers = Arrays.asList(
+        V1_7_0,
+        V1_6_0,
         V1_5_0,
         V1_4_0,
+        V1_3_0,
         V1_2_0,
         V1_1_0,
         V1_0_0
@@ -98,8 +111,8 @@ class TcpClientChannel implements ClientChannel {
     /** Timeout before next attempt to lock channel and process next response by current thread. */
     private static final long PAYLOAD_WAIT_TIMEOUT = 10L;
 
-    /** Protocol version agreed with the server. */
-    private ProtocolVersion ver = V1_5_0;
+    /** Protocol context. */
+    private ProtocolContext protocolContext;
 
     /** Channel. */
     private final Socket sock;
@@ -136,7 +149,7 @@ class TcpClientChannel implements ClientChannel {
             throw handleIOError("addr=" + cfg.getAddress(), e);
         }
 
-        handshake(cfg.getUserName(), cfg.getUserPassword());
+        handshake(DEFAULT_VERSION, cfg.getUserName(), cfg.getUserPassword());
     }
 
     /** {@inheritDoc} */
@@ -273,7 +286,7 @@ class TcpClientChannel implements ClientChannel {
 
         BinaryInputStream resIn;
 
-        if (ver.compareTo(V1_4_0) >= 0) {
+        if (protocolContext.isPartitionAwarenessSupported()) {
             short flags = dataInput.readShort();
 
             if ((flags & ClientFlag.AFFINITY_TOPOLOGY_CHANGED) != 0) {
@@ -311,8 +324,8 @@ class TcpClientChannel implements ClientChannel {
     }
 
     /** {@inheritDoc} */
-    @Override public ProtocolVersion serverVersion() {
-        return ver;
+    @Override public ProtocolContext protocolContext() {
+        return protocolContext;
     }
 
     /** Validate {@link ClientConfiguration}. */
@@ -350,37 +363,36 @@ class TcpClientChannel implements ClientChannel {
         return sock;
     }
 
-    /** Serialize String for thin client protocol. */
-    private static byte[] marshalString(String s) {
-        try (BinaryOutputStream out = new BinaryHeapOutputStream(s == null ? 1 : s.length() + 20);
-             BinaryRawWriterEx writer = new BinaryWriterExImpl(null, out, null, null)
-        ) {
-            writer.writeString(s);
-
-            return out.arrayCopy();
-        }
-    }
-
     /** Client handshake. */
-    private void handshake(String user, String pwd)
+    private void handshake(ProtocolVersion ver, String user, String pwd)
         throws ClientConnectionException, ClientAuthenticationException {
-        handshakeReq(user, pwd);
-        handshakeRes(user, pwd);
+        handshakeReq(ver, user, pwd);
+        handshakeRes(ver, user, pwd);
     }
 
     /** Send handshake request. */
-    private void handshakeReq(String user, String pwd) throws ClientConnectionException {
-        try (BinaryOutputStream req = new BinaryHeapOutputStream(32)) {
+    private void handshakeReq(ProtocolVersion proposedVer, String user, String pwd) throws ClientConnectionException {
+        try (BinaryOutputStream req = new BinaryHeapOutputStream(32);
+             BinaryRawWriterEx reqWriter = new BinaryWriterExImpl(null, req, null, null)
+        ) {
+            ProtocolContext protocolContext = protocolContextFromVersion(proposedVer);
+
             req.writeInt(0); // reserve an integer for the request size
             req.writeByte((byte)1); // handshake code, always 1
-            req.writeShort(ver.major());
-            req.writeShort(ver.minor());
-            req.writeShort(ver.patch());
+
+            req.writeShort(proposedVer.major());
+            req.writeShort(proposedVer.minor());
+            req.writeShort(proposedVer.patch());
             req.writeByte((byte)2); // client code, always 2
 
-            if (ver.compareTo(V1_1_0) >= 0 && user != null && !user.isEmpty()) {
-                req.writeByteArray(marshalString(user));
-                req.writeByteArray(marshalString(pwd));
+            if (protocolContext.isFeaturesSupported()) {
+                byte[] features = ThinProtocolFeature.featuresAsBytes(protocolContext.features());
+                reqWriter.writeByteArray(features);
+            }
+
+            if (protocolContext.isAuthorizationSupported() && user != null && !user.isEmpty()) {
+                reqWriter.writeString(user);
+                reqWriter.writeString(pwd);
             }
 
             req.writeInt(0, req.position() - 4); // actual size
@@ -389,8 +401,20 @@ class TcpClientChannel implements ClientChannel {
         }
     }
 
+    /**
+     * @param version Protocol version.
+     * @return Protocol context for a version.
+     */
+    private ProtocolContext protocolContextFromVersion(ProtocolVersion version) {
+        EnumSet<ProtocolFeature> features = null;
+        if (version.compareTo(V1_7_0) >= 0)
+            features = ProtocolFeature.allFeaturesAsEnumSet();
+
+        return new ProtocolContext(version, features);
+    }
+
     /** Receive and handle handshake response. */
-    private void handshakeRes(String user, String pwd)
+    private void handshakeRes(ProtocolVersion proposedVer, String user, String pwd)
         throws ClientConnectionException, ClientAuthenticationException {
         int resSize = dataInput.readInt();
 
@@ -399,40 +423,46 @@ class TcpClientChannel implements ClientChannel {
 
         BinaryInputStream res = new BinaryHeapInputStream(dataInput.read(resSize));
 
-        try (BinaryReaderExImpl r = new BinaryReaderExImpl(null, res, null, true)) {
-            if (res.readBoolean()) { // Success flag.
-                if (ver.compareTo(V1_4_0) >= 0)
-                    // TODO: IGNITE-11898 Implement Best Effort Affinity for java thin client.
-                    r.readUuid(); // Server node UUID.
-            }
-            else {
+        try (BinaryReaderExImpl reader = new BinaryReaderExImpl(null, res, null, true)) {
+
+            boolean success = res.readBoolean();
+            if (success) {
+                byte[] features = new byte[0];
+                if (proposedVer.compareTo(V1_7_0) >= 0) {
+                    features = reader.readByteArray();
+                }
+
+                protocolContext = new ProtocolContext(proposedVer, ProtocolFeature.enumSet(features));
+
+                if (protocolContext.isPartitionAwarenessSupported()) {
+                    // Reading server UUID
+                    reader.readUuid();
+                }
+            } else {
                 ProtocolVersion srvVer = new ProtocolVersion(res.readShort(), res.readShort(), res.readShort());
 
-                String err = r.readString();
-
+                String err = reader.readString();
                 int errCode = ClientStatus.FAILED;
 
                 if (res.remaining() > 0)
-                    errCode = r.readInt();
+                    errCode = reader.readInt();
 
                 if (errCode == ClientStatus.AUTH_FAILED)
                     throw new ClientAuthenticationException(err);
-                else if (ver.equals(srvVer))
+                else if (proposedVer.equals(srvVer))
                     throw new ClientProtocolError(err);
                 else if (!supportedVers.contains(srvVer) ||
-                    (srvVer.compareTo(V1_1_0) < 0 && user != null && !user.isEmpty()))
+                    (srvVer.compareTo(V1_1_0) < 0 && !F.isEmpty(user)))
                     // Server version is not supported by this client OR server version is less than 1.1.0 supporting
                     // authentication and authentication is required.
                     throw new ClientProtocolError(String.format(
                         "Protocol version mismatch: client %s / server %s. Server details: %s",
-                        ver,
+                        proposedVer,
                         srvVer,
                         err
                     ));
                 else { // Retry with server version.
-                    ver = srvVer;
-
-                    handshake(user, pwd);
+                    handshake(srvVer, user, pwd);
                 }
             }
         }

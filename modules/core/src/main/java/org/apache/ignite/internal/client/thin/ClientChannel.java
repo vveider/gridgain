@@ -37,7 +37,7 @@ interface ClientChannel extends AutoCloseable {
         Function<PayloadInputChannel, T> payloadReader) throws ClientConnectionException, ClientAuthorizationException;
 
     /**
-     * @return Server version.
+     * @return Protocol context.
      */
-    public ProtocolVersion serverVersion();
+    public ProtocolContext protocolContext();
 }

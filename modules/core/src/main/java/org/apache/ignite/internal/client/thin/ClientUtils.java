@@ -55,8 +55,6 @@ import org.apache.ignite.internal.binary.BinaryWriterExImpl;
 import org.apache.ignite.internal.binary.streams.BinaryInputStream;
 import org.apache.ignite.internal.binary.streams.BinaryOutputStream;
 
-import static org.apache.ignite.internal.client.thin.ProtocolVersion.V1_2_0;
-
 /**
  * Shared serialization/deserialization utils.
  */
@@ -232,7 +230,7 @@ final class ClientUtils {
     }
 
     /** Serialize configuration to stream. */
-    void cacheConfiguration(ClientCacheConfiguration cfg, BinaryOutputStream out, ProtocolVersion ver) {
+    void cacheConfiguration(ClientCacheConfiguration cfg, BinaryOutputStream out, ProtocolContext protocolContext) {
         try (BinaryRawWriterEx writer = new BinaryWriterExImpl(marsh.context(), out, null, null)) {
             int origPos = out.position();
 
@@ -311,7 +309,7 @@ final class ClientUtils {
                                 w.writeBoolean(qf.isNotNull());
                                 w.writeObject(qf.getDefaultValue());
 
-                                if (ver.compareTo(V1_2_0) >= 0) {
+                                if (protocolContext.isQueryEntityPrecisionAndScaleSupported()) {
                                     w.writeInt(qf.getPrecision());
                                     w.writeInt(qf.getScale());
                                 }
@@ -347,7 +345,7 @@ final class ClientUtils {
     }
 
     /** Deserialize configuration from stream. */
-    ClientCacheConfiguration cacheConfiguration(BinaryInputStream in, ProtocolVersion ver)
+    ClientCacheConfiguration cacheConfiguration(BinaryInputStream in, ProtocolContext protocolContext)
         throws IOException {
         try (BinaryReaderExImpl reader = new BinaryReaderExImpl(marsh.context(), in, null, true)) {
             reader.readInt(); // Do not need length to read data. The protocol defines fixed configuration layout.
@@ -392,7 +390,8 @@ final class ClientUtils {
                             .setKeyFieldName(reader.readString())
                             .setValueFieldName(reader.readString());
 
-                        boolean isCliVer1_2 = ver.compareTo(V1_2_0) >= 0;
+                        boolean isPrecisionAndScaleSupported =
+                            protocolContext.isQueryEntityPrecisionAndScaleSupported();
 
                         Collection<QueryField> qryFields = ClientUtils.collection(
                             in,
@@ -400,10 +399,10 @@ final class ClientUtils {
                                 String name = reader.readString();
                                 String typeName = reader.readString();
                                 boolean isKey = reader.readBoolean();
-                                boolean isNotNull = reader.readBoolean(); 
+                                boolean isNotNull = reader.readBoolean();
                                 Object dfltVal = reader.readObject();
-                                int precision = isCliVer1_2 ? reader.readInt() : -1;
-                                int scale = isCliVer1_2 ? reader.readInt() : -1; 
+                                int precision = isPrecisionAndScaleSupported ? reader.readInt() : -1;
+                                int scale = isPrecisionAndScaleSupported ? reader.readInt() : -1;
 
                                 return new QueryField(name,
                                     typeName,
