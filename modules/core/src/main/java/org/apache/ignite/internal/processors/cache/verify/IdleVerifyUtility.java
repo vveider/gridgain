@@ -35,8 +35,6 @@ import org.apache.ignite.internal.processors.cache.DynamicCacheDescriptor;
 import org.apache.ignite.internal.processors.cache.distributed.dht.topology.GridDhtLocalPartition;
 import org.apache.ignite.internal.processors.cache.distributed.dht.topology.GridDhtPartitionState;
 import org.apache.ignite.internal.processors.cache.distributed.dht.topology.GridDhtPartitionTopology;
-import org.apache.ignite.internal.processors.cache.persistence.GridCacheDatabaseSharedManager;
-import org.apache.ignite.internal.processors.cache.persistence.IgniteCacheDatabaseSharedManager;
 import org.apache.ignite.internal.processors.cache.persistence.file.FilePageStore;
 import org.apache.ignite.internal.processors.cache.persistence.file.FilePageStoreManager;
 import org.apache.ignite.internal.util.typedef.T2;
@@ -98,20 +96,6 @@ public class IdleVerifyUtility {
 
             pageStore.read(pageId, buf, true);
         }
-    }
-
-    /**
-     * @param db Shared DB manager.
-     * @return {@code True} if checkpoint is now, {@code False} otherwise.
-     */
-    public static boolean isCheckpointNow(@Nullable IgniteCacheDatabaseSharedManager db) {
-        if (!(db instanceof GridCacheDatabaseSharedManager))
-            return false;
-
-        GridCacheDatabaseSharedManager.CheckpointProgress progress =
-            ((GridCacheDatabaseSharedManager)db).getCheckpointer().currentProgress();
-
-        return progress != null && progress.inProgress();
     }
 
     /**

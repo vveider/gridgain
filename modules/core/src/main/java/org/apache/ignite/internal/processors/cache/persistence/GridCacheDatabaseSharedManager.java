@@ -3688,13 +3688,6 @@ public class GridCacheDatabaseSharedManager extends IgniteCacheDatabaseSharedMan
             pauseDetector = cctx.kernalContext().longJvmPauseDetector();
         }
 
-        /**
-         * @return Progress of current chekpoint or {@code null}, if isn't checkpoint at this moment.
-         */
-        public @Nullable CheckpointProgress currentProgress(){
-            return curCpProgress;
-        }
-
         /** {@inheritDoc} */
         @Override protected void body() {
             Throwable err = null;
