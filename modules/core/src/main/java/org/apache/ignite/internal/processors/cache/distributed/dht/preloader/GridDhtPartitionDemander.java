@@ -494,10 +494,17 @@ public class GridDhtPartitionDemander {
 
             // Check whether there were error during supplying process.
             if (supplyMsg.error() != null) {
-                U.warn(log, "Rebalancing from node cancelled [" + demandRoutineInfo(nodeId, supplyMsg) + "]" +
-                    "]. Supplier has failed with error: " + supplyMsg.error());
+                boolean forceReassign = (supplyMsg instanceof GridDhtPartitionSupplyMessageV3) &&
+                    ((GridDhtPartitionSupplyMessageV3)supplyMsg).allHistoricalPartitionsDone();
+
+                U.warn(log, "Rebalancing from node cancelled [" + demandRoutineInfo(nodeId, supplyMsg) +
+                    "]. Supplier has failed with error: " + supplyMsg.error() +
+                    (forceReassign? " Will try to switch to full rebalance instead of historical one." : ""));
 
                 fut.cancel(nodeId);
+
+                if (forceReassign)
+                    ctx.exchange().forceReassign(fut.exchId);
 
                 return;
             }
@@ -579,7 +586,7 @@ public class GridDhtPartitionDemander {
                                     preloadEntries(topVer, node, p, infos);
 
                                 fut.processed.get(p).increment();
-                                
+
                                 // If message was last for this partition,
                                 // then we take ownership.
                                 if (last)

@@ -133,12 +133,18 @@ public enum IgniteFeatures {
 
     /** Partition Map Exchange-free switch on baseline node left at fully rebalanced cluster. */
     PME_FREE_SWITCH(32),
-    
+
     /** */
     VOLATILE_DATA_STRUCTURES_REGION(33),
 
     /** Partition reconciliation utility. */
-    PARTITION_RECONCILIATION(34);
+    PARTITION_RECONCILIATION(34),
+
+    /**
+     * This feature indicates that a node supports fallback to full rebalance in case of an unexpected error occurred
+     * during the historical one.
+     */
+    FALLBACK_TO_FULL_REBALANCE(35);
 
     /**
      * Unique feature identifier.
