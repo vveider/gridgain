@@ -509,7 +509,7 @@ public class GridDhtPartitionSupplier {
             }
             else
                 U.error(log, "Failed to continue supplying ["
-                    + supplyRoutineInfo(topicId, nodeId, demandMsg) + "]", t);
+                    + supplyRoutineInfo(topicId, nodeId, demandMsg) + ']', t);
 
             try {
                 if (sctx != null)
@@ -517,7 +517,7 @@ public class GridDhtPartitionSupplier {
             }
             catch (Throwable t1) {
                 U.error(log, "Failed to cleanup supplying context ["
-                    + supplyRoutineInfo(topicId, nodeId, demandMsg) + "]", t1);
+                    + supplyRoutineInfo(topicId, nodeId, demandMsg) + ']', t1);
             }
 
             if (!sendErrMsg)
@@ -554,7 +554,7 @@ public class GridDhtPartitionSupplier {
             }
             catch (Throwable t1) {
                 U.error(log, "Failed to send supply error message ["
-                    + supplyRoutineInfo(topicId, nodeId, demandMsg) + "]", t1);
+                    + supplyRoutineInfo(topicId, nodeId, demandMsg) + ']', t1);
             }
 
             // If fallback to full rebalance is possible then let's try to switch to it
@@ -562,7 +562,7 @@ public class GridDhtPartitionSupplier {
             if (!fallbackToFullRebalance) {
                 grp.shared().kernalContext().failure().process(new FailureContext(FailureType.CRITICAL_ERROR,
                     new IgniteCheckedException("Failed to continue supplying ["
-                        + supplyRoutineInfo(topicId, nodeId, demandMsg) + "]", t)
+                        + supplyRoutineInfo(topicId, nodeId, demandMsg) + ']', t)
                 ));
             }
         }

@@ -495,7 +495,7 @@ public class GridDhtPartitionDemander {
             // Check whether there were error during supplying process.
             if (supplyMsg.error() != null) {
                 boolean forceReassign = (supplyMsg instanceof GridDhtPartitionSupplyMessageV3) &&
-                    ((GridDhtPartitionSupplyMessageV3)supplyMsg).allHistoricalPartitionsDone();
+                    !((GridDhtPartitionSupplyMessageV3)supplyMsg).allHistoricalPartitionsDone();
 
                 U.warn(log, "Rebalancing from node cancelled [" + demandRoutineInfo(nodeId, supplyMsg) +
                     "]. Supplier has failed with error: " + supplyMsg.error() +
