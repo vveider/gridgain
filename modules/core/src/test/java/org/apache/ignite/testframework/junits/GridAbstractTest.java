@@ -88,6 +88,7 @@ import org.apache.ignite.internal.util.IgniteUtils;
 import org.apache.ignite.internal.util.lang.GridAbsPredicate;
 import org.apache.ignite.internal.util.typedef.F;
 import org.apache.ignite.internal.util.typedef.G;
+import org.apache.ignite.internal.util.typedef.X;
 import org.apache.ignite.internal.util.typedef.internal.LT;
 import org.apache.ignite.internal.util.typedef.internal.S;
 import org.apache.ignite.internal.util.typedef.internal.U;
@@ -690,7 +691,8 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
     private void cleanUpTestEnviroment() throws Exception {
         long dur = System.currentTimeMillis() - ts;
 
-        info(">>> Stopping test: " + testDescription() + " in " + dur + " ms <<<");
+        info(">>> Stopping test: " + testDescription(false) + " in " + dur + " ms <<<");
+        info("##teamcity[testFinished name='" + testDescription(true) + "' duration='" + dur + "']");
 
         try {
             afterTest();
@@ -708,10 +710,11 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
     }
 
     /**
+     * @param teamCity If {@code true}, output in TeamCity machine-readable format.
      * @return Test description.
      */
-    protected String testDescription() {
-        return GridTestUtils.fullSimpleName(getClass()) + "#" + getName();
+    protected String testDescription(boolean teamCity) {
+        return GridTestUtils.fullSimpleName(getClass()) + (teamCity ? '.' : '#') + getName();
     }
 
     /**
@@ -2090,6 +2093,15 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
             if (t != null) {
                 U.error(log, "Test failed.", t);
 
+                String details = X.getFullStackTrace(t);
+
+                details = details.replace("\r", "|r")
+                    .replace("\n", "|n")
+                    .replace('\'', '`');
+
+                log.info("##teamcity[testFailed name='" + testDescription(true) +
+                    "' message='" + t.toString() + "' details='" + details + "']");
+
                 throw t;
             }
 
@@ -2122,7 +2134,8 @@ public abstract class GridAbstractTest extends JUnitAssertAware {
         // Clear log throttle.
         LT.clear();
 
-        info(">>> Starting test: " + testDescription() + " <<<");
+        info("##teamcity[testStarted name='" + testDescription(true) + "' captureStandardOutput='true']");
+        info(">>> Starting test: " + testDescription(false) + " <<<");
 
         try {
             beforeTest();

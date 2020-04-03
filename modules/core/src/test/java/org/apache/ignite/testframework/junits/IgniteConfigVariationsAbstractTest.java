@@ -183,10 +183,12 @@ public abstract class IgniteConfigVariationsAbstractTest extends GridCommonAbstr
     }
 
     /** {@inheritDoc} */
-    @Override protected String testDescription() {
+    @Override protected String testDescription(boolean teamCity) {
         assert testsCfg != null: "Tests should be run using test suite.";
 
-        return super.testDescription() + '-' + testsCfg.description() + '-' + testsCfg.gridCount() + "-node(s)";
+        return super.testDescription(teamCity) + (teamCity
+            ? ('(' + testsCfg.description() + ", " + testsCfg.gridCount() + "-nodes)")
+            : ('-' + testsCfg.description() + '-' + testsCfg.gridCount() + "-node(s)"));
     }
 
     /** {@inheritDoc} */
